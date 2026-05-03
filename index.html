@@ -3,129 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Müşteri Borç-Alacak Takip Sistemi</title>
+    <title>Güzellik Merkezi Müşteri & İşlem Takip</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+        body { font-family: 'Poppins', sans-serif; background-color: #fdf2f8; }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
     </style>
 </head>
 <body>
-
-    <div class="min-h-screen flex">
-        <aside class="w-64 bg-white border-r hidden lg:flex flex-col shadow-sm">
-            <div class="p-6 border-b text-center">
-                <h1 class="text-xl font-bold text-orange-600 tracking-tight">SEND INBOX</h1>
-                <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">Müşteri Takip V1</p>
-            </div>
-            <nav class="p-4 space-y-2">
-                <div class="flex items-center p-3 text-orange-600 bg-orange-50 rounded-lg font-semibold cursor-pointer">
-                    <span class="mr-3">🏠</span> Ana Sayfa
-                </div>
-                <div class="flex items-center p-3 text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer">
-                    <span class="mr-3">👥</span> Müşteriler
-                </div>
-                <div class="flex items-center p-3 text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer">
-                    <span class="mr-3">💰</span> Kasa & Banka
-                </div>
-                <div class="flex items-center p-3 text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer">
-                    <span class="mr-3">📊</span> Raporlar
-                </div>
+    <div id="app" class="min-h-screen flex flex-col lg:flex-row">
+        <!-- SOL MENÜ -->
+        <aside class="w-full lg:w-64 bg-white border-r p-6 shadow-sm">
+            <h1 class="text-2xl font-bold text-pink-600 mb-8 tracking-tight text-center lg:text-left">Güzellik Merkezi</h1>
+            <nav class="space-y-4 font-medium">
+                <button @click="view = 'dashboard'" :class="view === 'dashboard' ? 'text-pink-600 bg-pink-50' : 'text-gray-500'" class="w-full text-left p-3 rounded-xl transition">🏠 Dashboard</button>
+                <button @click="view = 'services'" :class="view === 'services' ? 'text-pink-600 bg-pink-50' : 'text-gray-500'" class="w-full text-left p-3 rounded-xl transition">💇‍♀️ Hizmet Tanımları</button>
+                <button @click="view = 'customers'" :class="view === 'customers' ? 'text-pink-600 bg-pink-50' : 'text-gray-500'" class="w-full text-left p-3 rounded-xl transition">👥 Müşteri & Borç</button>
             </nav>
         </aside>
 
-        <main class="flex-1 p-4 md:p-8">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-800">Finansal Özet</h2>
-                    <p class="text-gray-500 text-sm">Müşterilerinizin borç ve ödeme durumlarını buradan takip edin.</p>
+        <!-- ANA İÇERİK -->
+        <main class="flex-1 p-4 lg:p-8">
+            
+            <!-- 1. DASHBOARD GÖRÜNÜMÜ -->
+            <div v-if="view === 'dashboard'">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-gradient-to-br from-pink-500 to-rose-400 p-6 rounded-2xl text-white shadow-lg">
+                        <p class="text-sm opacity-80 uppercase font-bold">Toplam Bekleyen Alacak</p>
+                        <h3 class="text-3xl font-bold mt-2">{{ formatPrice(totalDebt) }}</h3>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border shadow-sm border-pink-100">
+                        <p class="text-sm text-gray-400 uppercase font-bold">Kayıtlı Müşteri</p>
+                        <h3 class="text-3xl font-bold mt-2 text-gray-800">{{ customers.length }}</h3>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border shadow-sm border-pink-100">
+                        <p class="text-sm text-gray-400 uppercase font-bold">Tanımlı Hizmet</p>
+                        <h3 class="text-3xl font-bold mt-2 text-gray-800">{{ services.length }}</h3>
+                    </div>
                 </div>
-                <div class="flex gap-2">
-                    <button class="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-lg shadow-orange-200 transition-all">
-                        + Yeni Tahsilat Ekle
-                    </button>
+
+                <!-- Hızlı Müşteri Ekleme Formu -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border mb-8">
+                    <h4 class="font-bold mb-4 text-gray-700">Yeni İşlem & Müşteri Kaydı</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <input v-model="newCust.name" type="text" placeholder="Müşteri Adı Soyadı" class="border p-2 rounded-lg outline-none focus:ring-2 focus:ring-pink-200">
+                        <select v-model="newCust.service" class="border p-2 rounded-lg outline-none">
+                            <option value="">İşlem Seçin</option>
+                            <option v-for="s in services" :key="s.id" :value="s.name">{{ s.name }} ({{ s.price }}₺)</option>
+                        </select>
+                        <input v-model.number="newCust.paid" type="number" placeholder="Ödenen Tutar" class="border p-2 rounded-lg outline-none">
+                        <button @click="addCustomer" class="bg-pink-600 text-white font-bold rounded-lg hover:bg-pink-700 transition">Kaydet</button>
+                    </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <div class="bg-blue-500 p-5 rounded-2xl text-white shadow-lg shadow-blue-200">
-                    <p class="text-xs font-bold opacity-80 uppercase">Toplam Satış / İşlem</p>
-                    <h3 class="text-2xl font-bold mt-2">150.000,00 ₺</h3>
+            <!-- 2. HİZMET TANIMLARI GÖRÜNÜMÜ -->
+            <div v-if="view === 'services'" class="bg-white p-6 rounded-2xl shadow-sm border">
+                <h3 class="text-xl font-bold mb-6">Yapılacak İşlemler Menüsü</h3>
+                <div class="flex gap-4 mb-6">
+                    <input v-model="newService.name" type="text" placeholder="Hizmet Adı (Örn: Lazer)" class="border p-2 rounded-lg flex-1">
+                    <input v-model.number="newService.price" type="number" placeholder="Fiyat" class="border p-2 rounded-lg w-32">
+                    <button @click="addService" class="bg-green-500 text-white px-6 rounded-lg font-bold">Ekle</button>
                 </div>
-                <div class="bg-green-500 p-5 rounded-2xl text-white shadow-lg shadow-green-200">
-                    <p class="text-xs font-bold opacity-80 uppercase">Tahsil Edilen (Ödeme)</p>
-                    <h3 class="text-2xl font-bold mt-2">95.000,00 ₺</h3>
-                </div>
-                <div class="bg-red-500 p-5 rounded-2xl text-white shadow-lg shadow-red-200">
-                    <p class="text-xs font-bold opacity-80 uppercase">Bekleyen Toplam Borç</p>
-                    <h3 class="text-2xl font-bold mt-2">55.000,00 ₺</h3>
-                </div>
-                <div class="bg-purple-600 p-5 rounded-2xl text-white shadow-lg shadow-purple-200">
-                    <p class="text-xs font-bold opacity-80 uppercase">Müşteri Sayısı</p>
-                    <h3 class="text-2xl font-bold mt-2">42</h3>
-                </div>
+                <table class="w-full">
+                    <tr class="bg-gray-50 text-left text-xs font-bold uppercase text-gray-400 border-b">
+                        <th class="p-4">Hizmet Adı</th>
+                        <th class="p-4">Fiyat</th>
+                        <th class="p-4 text-right">İşlem</th>
+                    </tr>
+                    <tr v-for="(s, index) in services" :key="index" class="border-b hover:bg-pink-50">
+                        <td class="p-4 font-medium">{{ s.name }}</td>
+                        <td class="p-4">{{ formatPrice(s.price) }}</td>
+                        <td class="p-4 text-right">
+                            <button @click="removeService(index)" class="text-red-500 font-bold">Sil</button>
+                        </td>
+                    </tr>
+                </table>
             </div>
 
-            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div class="p-5 border-b flex justify-between items-center bg-gray-50/50">
-                    <h3 class="font-bold text-gray-700">Müşteri Bakiye Detayları</h3>
-                    <input type="text" placeholder="Müşteri isminde ara..." class="border rounded-md px-3 py-1 text-sm outline-none focus:ring-2 focus:ring-orange-200">
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead class="bg-gray-50 text-gray-400 text-[11px] uppercase font-bold tracking-wider border-b">
-                            <tr>
-                                <th class="px-6 py-4">Müşteri / Unvan</th>
-                                <th class="px-6 py-4">Toplam Tutar</th>
-                                <th class="px-6 py-4">Yapılan Ödeme</th>
-                                <th class="px-6 py-4">Kalan Borç</th>
-                                <th class="px-6 py-4">Durum</th>
-                                <th class="px-6 py-4 text-right">İşlem</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 text-sm">
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 font-semibold text-gray-800">Ahmet Yılmaz (Yılmaz Mobilya)</td>
-                                <td class="px-6 py-4 text-gray-600">20.000,00 ₺</td>
-                                <td class="px-6 py-4 text-green-600 font-bold">12.500,00 ₺</td>
-                                <td class="px-6 py-4 text-red-600 font-extrabold">7.500,00 ₺</td>
-                                <td class="px-6 py-4">
-                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded-full">BORÇLU</span>
-                                </td>
-                                <td class="px-6 py-4 text-right">
-                                    <button class="text-orange-500 hover:text-orange-700 font-bold">Düzenle</button>
-                                </td>
-                            </tr>
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 font-semibold text-gray-800">Mehmet Aksoy</td>
-                                <td class="px-6 py-4 text-gray-600">5.000,00 ₺</td>
-                                <td class="px-6 py-4 text-green-600 font-bold">5.000,00 ₺</td>
-                                <td class="px-6 py-4 text-gray-400 font-bold">0,00 ₺</td>
-                                <td class="px-6 py-4">
-                                    <span class="px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-full">ÖDENDİ</span>
-                                </td>
-                                <td class="px-6 py-4 text-right">
-                                    <button class="text-orange-500 hover:text-orange-700 font-bold">Düzenle</button>
-                                </td>
-                            </tr>
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4 font-semibold text-gray-800">Caner Teknik Servis</td>
-                                <td class="px-6 py-4 text-gray-600">12.000,00 ₺</td>
-                                <td class="px-6 py-4 text-green-600 font-bold">2.000,00 ₺</td>
-                                <td class="px-6 py-4 text-red-600 font-extrabold">10.000,00 ₺</td>
-                                <td class="px-6 py-4">
-                                    <span class="px-2 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded-full">VADESİ GEÇMİŞ</span>
-                                </td>
-                                <td class="px-6 py-4 text-right">
-                                    <button class="text-orange-500 hover:text-orange-700 font-bold">Düzenle</button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+            <!-- 3. MÜŞTERİ LİSTESİ GÖRÜNÜMÜ -->
+            <div v-if="view === 'customers'" class="bg-white rounded-2xl shadow-sm border overflow-hidden">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-50 text-xs font-bold uppercase text-gray-400 border-b">
+                        <tr>
+                            <th class="p-4">Müşteri</th>
+                            <th class="p-4">Yapılan İşlem</th>
+                            <th class="p-4 text-red-500">Kalan Borç</th>
+                            <th class="p-4 text-right">Düzenle / Sil</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(c, index) in customers" :key="index" class="border-b">
+                            <td class="p-4 font-bold">{{ c.name }}</td>
+                            <td class="p-4 text-sm text-gray-500">{{ c.service }}</td>
+                            <td class="p-4 font-extrabold text-red-600">{{ formatPrice(c.debt) }}</td>
+                            <td class="p-4 text-right space-x-2">
+                                <button @click="editDebt(index)" class="text-blue-500 font-bold text-xs">Borç Güncelle</button>
+                                <button @click="removeCustomer(index)" class="text-gray-400 hover:text-red-600 font-bold text-xs">SİL</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
+
         </main>
     </div>
 
+    <script>
+        const { createApp } = Vue;
+        createApp({
+            data() {
+                return {
+                    view: 'dashboard',
+                    customers: JSON.parse(localStorage.getItem('cust')) || [],
+                    services: JSON.parse(localStorage.getItem('serv')) || [
+                        { name: 'Lazer Epilasyon', price: 2500 },
+                        { name: 'Cilt Bakımı', price: 800 }
+                    ],
+                    newCust: { name: '', service: '', paid: 0 },
+                    newService: { name: '', price: 0 }
+                }
+            },
+            computed: {
+                totalDebt() {
+                    return this.customers.reduce((acc, obj) => acc + obj.debt, 0);
+                }
+            },
+            methods: {
+                addService() {
+                    if(!this.newService.name) return;
+                    this.services.push({...this.newService});
+                    this.newService = { name: '', price: 0 };
+                    this.save();
+                },
+                removeService(i) {
+                    this.services.splice(i, 1);
+                    this.save();
+                },
+                addCustomer() {
+                    if(!this.newCust.name || !this.newCust.service) return;
+                    const servicePrice = this.services.find(s => s.name === this.newCust.service).price;
+                    const debt = servicePrice - this.newCust.paid;
+                    this.customers.push({
+                        name: this.newCust.name,
+                        service: this.newCust.service,
+                        total: servicePrice,
+                        paid: this.newCust.paid,
+                        debt: debt < 0 ? 0 : debt
+                    });
+                    this.newCust = { name: '', service: '', paid: 0 };
+                    this.save();
+                },
+                editDebt(i) {
+                    const newVal = prompt("Yeni kalan borç tutarını girin:", this.customers[i].debt);
+                    if(newVal !== null) {
+                        this.customers[i].debt = parseFloat(newVal);
+                        this.save();
+                    }
+                },
+                removeCustomer(i) {
+                    if(confirm("Müşteriyi ve borç kaydını tamamen silmek istediğine emin misin?")) {
+                        this.customers.splice(i, 1);
+                        this.save();
+                    }
+                },
+                save() {
+                    localStorage.setItem('cust', JSON.stringify(this.customers));
+                    localStorage.setItem('serv', JSON.stringify(this.services));
+                },
+                formatPrice(val) {
+                    return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(val);
+                }
+            }
+        }).mount('#app');
+    </script>
 </body>
 </html>
