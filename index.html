@@ -1,216 +1,131 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ENJOY CRM</title>
-
-<style>
-body {
-  margin:0;
-  font-family: Arial;
-  display:flex;
-  background:#f1f5f9;
-}
-
-/* SIDEBAR */
-.sidebar {
-  width:230px;
-  background:#1e293b;
-  color:white;
-  height:100vh;
-  padding:20px;
-}
-.sidebar h2 {margin-bottom:20px;}
-.sidebar a {
-  display:block;
-  padding:10px;
-  margin-bottom:5px;
-  color:white;
-  text-decoration:none;
-  border-radius:6px;
-}
-.sidebar a:hover {background:#334155;}
-
-/* MAIN */
-.main {
-  flex:1;
-  padding:20px;
-}
-
-/* TOPBAR */
-.topbar {
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:20px;
-}
-
-/* CARDS */
-.cards {
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-  gap:15px;
-}
-.card {
-  padding:20px;
-  border-radius:10px;
-  color:white;
-}
-.blue{background:#3b82f6;}
-.green{background:#22c55e;}
-.orange{background:#f97316;}
-.purple{background:#a855f7;}
-
-/* FORM */
-.form input {
-  padding:10px;
-  margin:5px;
-}
-button {
-  padding:10px;
-  background:#22c55e;
-  color:white;
-  border:none;
-  cursor:pointer;
-}
-
-/* TABLE */
-table {
-  width:100%;
-  background:white;
-  margin-top:20px;
-  border-radius:10px;
-  overflow:hidden;
-}
-th, td {
-  padding:10px;
-  border-bottom:1px solid #ddd;
-  text-align:left;
-}
-
-/* MOBILE */
-@media(max-width:768px){
-  .sidebar{display:none;}
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Müşteri Borç-Alacak Takip Sistemi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+    </style>
 </head>
-
 <body>
 
-<div class="sidebar">
-  <h2>ENJOY CRM</h2>
-  <a href="#">Ana Sayfa</a>
-  <a href="#">Müşteriler</a>
-  <a href="#">Gelir - Gider</a>
-</div>
+    <div class="min-h-screen flex">
+        <aside class="w-64 bg-white border-r hidden lg:flex flex-col shadow-sm">
+            <div class="p-6 border-b text-center">
+                <h1 class="text-xl font-bold text-orange-600 tracking-tight">SEND INBOX</h1>
+                <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">Müşteri Takip V1</p>
+            </div>
+            <nav class="p-4 space-y-2">
+                <div class="flex items-center p-3 text-orange-600 bg-orange-50 rounded-lg font-semibold cursor-pointer">
+                    <span class="mr-3">🏠</span> Ana Sayfa
+                </div>
+                <div class="flex items-center p-3 text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer">
+                    <span class="mr-3">👥</span> Müşteriler
+                </div>
+                <div class="flex items-center p-3 text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer">
+                    <span class="mr-3">💰</span> Kasa & Banka
+                </div>
+                <div class="flex items-center p-3 text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer">
+                    <span class="mr-3">📊</span> Raporlar
+                </div>
+            </nav>
+        </aside>
 
-<div class="main">
+        <main class="flex-1 p-4 md:p-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Finansal Özet</h2>
+                    <p class="text-gray-500 text-sm">Müşterilerinizin borç ve ödeme durumlarını buradan takip edin.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button class="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg font-bold text-sm shadow-lg shadow-orange-200 transition-all">
+                        + Yeni Tahsilat Ekle
+                    </button>
+                </div>
+            </div>
 
-<div class="topbar">
-  <h2>Dashboard</h2>
-</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div class="bg-blue-500 p-5 rounded-2xl text-white shadow-lg shadow-blue-200">
+                    <p class="text-xs font-bold opacity-80 uppercase">Toplam Satış / İşlem</p>
+                    <h3 class="text-2xl font-bold mt-2">150.000,00 ₺</h3>
+                </div>
+                <div class="bg-green-500 p-5 rounded-2xl text-white shadow-lg shadow-green-200">
+                    <p class="text-xs font-bold opacity-80 uppercase">Tahsil Edilen (Ödeme)</p>
+                    <h3 class="text-2xl font-bold mt-2">95.000,00 ₺</h3>
+                </div>
+                <div class="bg-red-500 p-5 rounded-2xl text-white shadow-lg shadow-red-200">
+                    <p class="text-xs font-bold opacity-80 uppercase">Bekleyen Toplam Borç</p>
+                    <h3 class="text-2xl font-bold mt-2">55.000,00 ₺</h3>
+                </div>
+                <div class="bg-purple-600 p-5 rounded-2xl text-white shadow-lg shadow-purple-200">
+                    <p class="text-xs font-bold opacity-80 uppercase">Müşteri Sayısı</p>
+                    <h3 class="text-2xl font-bold mt-2">42</h3>
+                </div>
+            </div>
 
-<div class="cards">
-  <div class="card blue">Toplam Müşteri: <span id="total">0</span></div>
-  <div class="card green">Toplam Borç: <span id="debt">0</span> ₺</div>
-  <div class="card orange">Bugün Gelen: 0</div>
-  <div class="card purple">Toplam İşlem: <span id="totalTx">0</span></div>
-</div>
-
-<br>
-
-<input id="search" placeholder="Müşteri ara..." onkeyup="searchCustomer()">
-
-<div class="form">
-  <input id="name" placeholder="Müşteri adı">
-  <input id="service" placeholder="İşlem">
-  <input id="price" placeholder="Ücret">
-  <input id="paid" placeholder="Ödenen">
-  <button onclick="addCustomer()">Kaydet</button>
-</div>
-
-<table>
-  <thead>
-    <tr>
-      <th>İsim</th>
-      <th>İşlem</th>
-      <th>Tarih</th>
-      <th>Ücret</th>
-      <th>Ödenen</th>
-      <th>Kalan</th>
-    </tr>
-  </thead>
-  <tbody id="table"></tbody>
-</table>
-
-</div>
-
-<script>
-let customers = JSON.parse(localStorage.getItem("customers")) || [];
-
-function addCustomer(){
-  const name = document.getElementById("name").value;
-  const service = document.getElementById("service").value;
-  const price = Number(document.getElementById("price").value);
-  const paid = Number(document.getElementById("paid").value);
-
-  if(!name || !service) return alert("Eksik");
-
-  const remaining = price - paid;
-
-  const record = {
-    name,
-    service,
-    price,
-    paid,
-    remaining,
-    date: new Date().toLocaleString()
-  };
-
-  customers.push(record);
-
-  localStorage.setItem("customers", JSON.stringify(customers));
-
-  render();
-}
-
-function render(data = customers){
-  let html = "";
-  let totalDebt = 0;
-
-  data.forEach(c=>{
-    totalDebt += c.remaining;
-
-    html += `
-      <tr>
-        <td>${c.name}</td>
-        <td>${c.service}</td>
-        <td>${c.date}</td>
-        <td>${c.price}₺</td>
-        <td>${c.paid}₺</td>
-        <td>${c.remaining}₺</td>
-      </tr>
-    `;
-  });
-
-  document.getElementById("table").innerHTML = html;
-  document.getElementById("total").innerText = data.length;
-  document.getElementById("debt").innerText = totalDebt;
-  document.getElementById("totalTx").innerText = data.length;
-}
-
-function searchCustomer(){
-  const q = document.getElementById("search").value.toLowerCase();
-
-  const filtered = customers.filter(c =>
-    c.name.toLowerCase().includes(q)
-  );
-
-  render(filtered);
-}
-
-render();
-</script>
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div class="p-5 border-b flex justify-between items-center bg-gray-50/50">
+                    <h3 class="font-bold text-gray-700">Müşteri Bakiye Detayları</h3>
+                    <input type="text" placeholder="Müşteri isminde ara..." class="border rounded-md px-3 py-1 text-sm outline-none focus:ring-2 focus:ring-orange-200">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 text-gray-400 text-[11px] uppercase font-bold tracking-wider border-b">
+                            <tr>
+                                <th class="px-6 py-4">Müşteri / Unvan</th>
+                                <th class="px-6 py-4">Toplam Tutar</th>
+                                <th class="px-6 py-4">Yapılan Ödeme</th>
+                                <th class="px-6 py-4">Kalan Borç</th>
+                                <th class="px-6 py-4">Durum</th>
+                                <th class="px-6 py-4 text-right">İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 text-sm">
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 font-semibold text-gray-800">Ahmet Yılmaz (Yılmaz Mobilya)</td>
+                                <td class="px-6 py-4 text-gray-600">20.000,00 ₺</td>
+                                <td class="px-6 py-4 text-green-600 font-bold">12.500,00 ₺</td>
+                                <td class="px-6 py-4 text-red-600 font-extrabold">7.500,00 ₺</td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded-full">BORÇLU</span>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <button class="text-orange-500 hover:text-orange-700 font-bold">Düzenle</button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 font-semibold text-gray-800">Mehmet Aksoy</td>
+                                <td class="px-6 py-4 text-gray-600">5.000,00 ₺</td>
+                                <td class="px-6 py-4 text-green-600 font-bold">5.000,00 ₺</td>
+                                <td class="px-6 py-4 text-gray-400 font-bold">0,00 ₺</td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-full">ÖDENDİ</span>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <button class="text-orange-500 hover:text-orange-700 font-bold">Düzenle</button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 font-semibold text-gray-800">Caner Teknik Servis</td>
+                                <td class="px-6 py-4 text-gray-600">12.000,00 ₺</td>
+                                <td class="px-6 py-4 text-green-600 font-bold">2.000,00 ₺</td>
+                                <td class="px-6 py-4 text-red-600 font-extrabold">10.000,00 ₺</td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded-full">VADESİ GEÇMİŞ</span>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <button class="text-orange-500 hover:text-orange-700 font-bold">Düzenle</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
 
 </body>
 </html>
