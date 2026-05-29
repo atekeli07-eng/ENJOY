@@ -1,12 +1,33 @@
-import React, { useState, useEffect } from "react";
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Berber Platformu · Antalya</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+  html, body, #root { margin: 0; padding: 0; min-height: 100%; }
+  body { font-family: 'Manrope', sans-serif; background: #f4f3ef; }
+  #loading { display: flex; height: 100vh; align-items: center; justify-content: center; color: #6b6862; font-family: sans-serif; }
+</style>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"><div id="loading">Yükleniyor…</div></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect } = React;
+
 
 // ============ STORAGE ============
 const store = {
   async get(key, def) {
-    try { const r = await window.storage.get(key); return r ? JSON.parse(r.value) : def; }
+    try { const v = localStorage.getItem("bp_" + key); return v != null ? JSON.parse(v) : def; }
     catch { return def; }
   },
-  async set(key, val) { try { await window.storage.set(key, JSON.stringify(val)); } catch (e) { console.error(e); } },
+  async set(key, val) { try { localStorage.setItem("bp_" + key, JSON.stringify(val)); } catch (e) { console.error(e); } },
 };
 
 // ============ HELPERS ============
@@ -73,7 +94,7 @@ const SEED_APPTS = [
 ];
 
 // ============ APP ROOT ============
-export default function App() {
+function App() {
   const [shops, setShops] = useState(null);
   const [appts, setAppts] = useState(null);
   const [route, setRoute] = useState({ name: "landing" }); // landing | customerShop | adminLogin | admin | register
@@ -1129,3 +1150,10 @@ const CSS = `
     .appt-meta span { font-size: 11px !important; }
   }
 `;
+
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
