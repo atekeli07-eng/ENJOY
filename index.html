@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Berber Platformu · Antalya</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <style>
   html, body, #root { margin: 0; padding: 0; min-height: 100%; }
   body { font-family: 'Manrope', sans-serif; background: #f4f3ef; }
@@ -16,7 +15,6 @@
 </head>
 <body>
 <div id="root"><div id="loading">Yükleniyor…</div></div>
-
 <script type="text/babel" data-presets="react">
 const { useState, useEffect } = React;
 
@@ -62,6 +60,30 @@ const canOperate = (shop) => { const s = subStatus(shop).state; return s === "tr
 const ANTALYA = ["Lara, Muratpaşa", "Konyaaltı", "Kepez", "Belek, Serik", "Döşemealtı", "Muratpaşa Merkez", "Kundu", "Side, Manavgat"];
 const DISTRICTS = ["Muratpaşa", "Konyaaltı", "Kepez", "Serik", "Döşemealtı", "Manavgat", "Aksu", "Alanya"];
 const TIMES = ["09:00","09:30","10:00","11:00","11:30","13:00","13:30","14:30","15:00","16:00","17:00","17:30","18:30"];
+const DAYS = [["mon","Pzt"],["tue","Sal"],["wed","Çar"],["thu","Per"],["fri","Cum"],["sat","Cmt"],["sun","Paz"]];
+const DAY_KEY = ["sun","mon","tue","wed","thu","fri","sat"]; // JS getDay() sırası
+const defaultHours = () => ({
+  mon: { open: "09:00", close: "19:00", closed: false },
+  tue: { open: "09:00", close: "19:00", closed: false },
+  wed: { open: "09:00", close: "19:00", closed: false },
+  thu: { open: "09:00", close: "19:00", closed: false },
+  fri: { open: "09:00", close: "19:00", closed: false },
+  sat: { open: "10:00", close: "18:00", closed: false },
+  sun: { open: "10:00", close: "16:00", closed: true },
+});
+const defaultStaff = (owner) => [{ id: uid("st"), name: owner || "Usta", role: "Berber" }];
+// Bir gün için, çalışma saatleri içinde kalan randevu saatlerini döndür
+const slotsForDate = (hours, iso) => {
+  const dk = DAY_KEY[new Date(iso + "T00:00:00").getDay()];
+  const h = (hours || defaultHours())[dk];
+  if (!h || h.closed) return [];
+  return TIMES.filter((t) => t >= h.open && t <= h.close);
+};
+const isClosed = (hours, iso) => {
+  const dk = DAY_KEY[new Date(iso + "T00:00:00").getDay()];
+  const h = (hours || defaultHours())[dk];
+  return !h || h.closed;
+};
 
 const defaultServices = () => [
   { id: uid("sv"), name: "Klasik Traş + Saç Kesimi", dur: 45, price: 1100, desc: "Saç kesimi, sakal düzeltme" },
@@ -73,6 +95,8 @@ const defaultServices = () => [
 const SEED_SHOPS = [
   { id: "shop1", shopName: "Ahmet Tekeli Erkek Kuaförü", owner: "Ahmet Tekeli", phone: "0532 100 15 04", district: "Muratpaşa", about: "Antalya'da evde ve ofiste VIP traş hizmeti. Klasik usta işi.", pin: "1504", rating: 4.9, image: "cemo-bg.png",
     sub: "active", subUntil: Date.now() + 24 * 86400000, trialUntil: 0,
+    hours: defaultHours(),
+    staff: [{ id: "st-a1", name: "Ahmet Tekeli", role: "Usta berber" }, { id: "st-a2", name: "Yusuf", role: "Berber" }],
     services: [
       { id: "a-sv1", name: "Klasik Traş + Saç Kesimi", dur: 45, price: 1100, desc: "Saç kesimi, sakal düzeltme" },
       { id: "a-sv2", name: "Sakal Şekillendirme + Sıcak Havlu", dur: 45, price: 1350, desc: "Sıcak havlu ritüeli, jiletle bitiş" },
@@ -81,6 +105,8 @@ const SEED_SHOPS = [
     ] },
   { id: "shop2", shopName: "Mert Kuaför Lounge", owner: "Mert Yıldız", phone: "0533 200 00 00", district: "Konyaaltı", about: "Modern erkek bakımı, cilt ve saç uzmanı.", pin: "0000", rating: 4.7, image: "",
     sub: "trial", subUntil: 0, trialUntil: Date.now() + 5 * 86400000,
+    hours: defaultHours(),
+    staff: [{ id: "st-b1", name: "Mert Yıldız", role: "Usta berber" }],
     services: [
       { id: "b-sv1", name: "Saç Kesimi", dur: 30, price: 900, desc: "Makas ve makine" },
       { id: "b-sv2", name: "Sakal + Saç", dur: 50, price: 1400, desc: "Komple bakım" },
@@ -281,7 +307,8 @@ function Register({ onCreate, onBack, shops }) {
     if (shops.some((s) => norm(s.phone) === norm(f.phone))) { setErr("Bu telefon numarası zaten kayıtlı"); return; }
     onCreate({ id: uid("shop"), shopName: f.shopName.trim(), owner: f.owner.trim(), phone: f.phone.trim(), district: f.district,
       about: f.about.trim() || "Mobil berber hizmeti.", pin: f.pin, rating: 5.0, image: "",
-      sub: "trial", subUntil: 0, trialUntil: Date.now() + 7 * 86400000, services: defaultServices() });
+      sub: "trial", subUntil: 0, trialUntil: Date.now() + 7 * 86400000,
+      hours: defaultHours(), staff: defaultStaff(f.owner.trim()), services: defaultServices() });
   };
   return (
     <div style={S.authWrap}>
@@ -419,10 +446,14 @@ function CustomerApp({ shop, appts, addAppt, onExit }) {
 
 function CustomerBooking({ shop, svc, onBack, onSave }) {
   const [step, setStep] = useState(1);
-  const [f, setF] = useState({ name: "", phone: "", service: "", date: todayISO(), time: "10:00", place: "home", addr: ANTALYA[0], note: "" });
+  const staff = shop.staff || [];
+  const [f, setF] = useState({ staffId: staff.length === 1 ? staff[0].id : "", name: "", phone: "", service: "", date: todayISO(), time: "", place: "home", addr: ANTALYA[0], note: "" });
   const set = (k, v) => setF({ ...f, [k]: v });
-  const canNext = step === 1 ? f.service : step === 2 ? f.date && f.time : f.name && f.phone;
-  const submit = () => onSave({ ...f, id: uid("ap"), shopId: shop.id, vip: false, status: "pending" });
+  const slots = slotsForDate(shop.hours, f.date);
+  const closed = isClosed(shop.hours, f.date);
+  const canNext = step === 1 ? f.staffId : step === 2 ? f.service : step === 3 ? (f.date && f.time && !closed) : (f.name && f.phone);
+  const staffName = (id) => (staff.find((s) => s.id === id) || {}).name || "";
+  const submit = () => onSave({ ...f, id: uid("ap"), shopId: shop.id, staffName: staffName(f.staffId), vip: false, status: "pending" });
 
   return (
     <>
@@ -431,25 +462,43 @@ function CustomerBooking({ shop, svc, onBack, onSave }) {
         <div style={{ fontFamily: "Fraunces, serif", fontSize: 24 }}>Randevu Oluştur</div>
       </div>
       <div style={S.steps}>
-        {["Hizmet","Zaman & Yer","Bilgiler"].map((s, i) => (
-          <div key={s} style={{ ...S.stepDot, ...(step >= i+1 ? S.stepActive : {}) }}>{i+1}. {s}</div>
+        {["Çalışan","Hizmet","Zaman","Bilgiler"].map((s, i) => (
+          <div key={s} style={{ ...S.stepDot, fontSize: 10, ...(step >= i+1 ? S.stepActive : {}) }}>{i+1}. {s}</div>
         ))}
       </div>
       <div style={{ minHeight: 220, marginTop: 4 }}>
-        {step === 1 && shop.services.map((s) => (
+        {step === 1 && <>
+          <Label>Hangi çalışandan randevu almak istersiniz?</Label>
+          {staff.map((s) => (
+            <div key={s.id} style={{ ...S.svcPick, ...(f.staffId === s.id ? S.svcPickActive : {}) }} onClick={() => set("staffId", s.id)}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#211c16", color: "#b89651", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{s.name[0]}</div>
+                <div><div style={{ fontWeight: 700 }}>{s.name}</div><div style={{ fontSize: 12, color: "#6b6862" }}>{s.role}</div></div>
+              </div>
+              {f.staffId === s.id && <span style={{ color: "#b89651", fontWeight: 700 }}>✓</span>}
+            </div>
+          ))}
+        </>}
+        {step === 2 && shop.services.map((s) => (
           <div key={s.id} style={{ ...S.svcPick, ...(f.service === s.id ? S.svcPickActive : {}) }} onClick={() => set("service", s.id)}>
             <div><div style={{ fontWeight: 700 }}>{s.name}</div>
               <div style={{ fontSize: 12, color: "#6b6862" }}>{s.desc} · {s.dur} dk</div></div>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 18, color: "#b89651" }}>{fmtMoney(s.price)}</div>
           </div>
         ))}
-        {step === 2 && <>
+        {step === 3 && <>
           <Label>Tarih</Label>
-          <input type="date" value={f.date} min={todayISO()} onChange={(e) => set("date", e.target.value)} style={S.input} />
+          <input type="date" value={f.date} min={todayISO()} onChange={(e) => setF({ ...f, date: e.target.value || f.date, time: "" })} style={S.input} />
           <Label>Saat</Label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {TIMES.map((t) => <div key={t} style={{ ...S.timePick, ...(f.time === t ? S.svcPickActive : {}) }} onClick={() => set("time", t)}>{t}</div>)}
-          </div>
+          {closed ? (
+            <div style={{ ...S.noteBox, color: "#a8443a", borderColor: "#f0d9d5" }}>Bu gün kapalı. Lütfen başka bir gün seçin.</div>
+          ) : slots.length === 0 ? (
+            <div style={{ ...S.noteBox }}>Bu gün için uygun saat yok.</div>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {slots.map((t) => <div key={t} style={{ ...S.timePick, ...(f.time === t ? S.svcPickActive : {}) }} onClick={() => set("time", t)}>{t}</div>)}
+            </div>
+          )}
           <Label>Konum</Label>
           <div style={{ display: "flex", gap: 8 }}>
             {[["home","🏠 Evim"],["office","🏢 Ofisim"]].map(([k,l]) => (
@@ -461,7 +510,7 @@ function CustomerBooking({ shop, svc, onBack, onSave }) {
             {ANTALYA.map((a) => <option key={a}>{a}</option>)}
           </select>
         </>}
-        {step === 3 && <>
+        {step === 4 && <>
           <Label>Ad Soyad</Label>
           <input value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Adınız soyadınız" style={S.input} />
           <Label>Telefon</Label>
@@ -469,13 +518,13 @@ function CustomerBooking({ shop, svc, onBack, onSave }) {
           <Label>Adres detayı / not (opsiyonel)</Label>
           <input value={f.note} onChange={(e) => set("note", e.target.value)} placeholder="Kapı no, kat, tercih…" style={S.input} />
           {f.service && <div style={{ ...S.noteBox, marginTop: 16 }}>
-            Özet: <b>{svc(f.service).name}</b> · {fmtDate(f.date)} {f.time} · {f.place === "home" ? "Ev" : "Ofis"}, {f.addr}
+            Özet: <b>{staffName(f.staffId)}</b> · <b>{svc(f.service).name}</b><br/>{fmtDate(f.date)} {f.time} · {f.place === "home" ? "Ev" : "Ofis"}, {f.addr}
             <div style={{ marginTop: 4 }}>Tutar: <b>{fmtMoney(svc(f.service).price)}</b></div>
           </div>}
         </>}
       </div>
       <button style={{ ...S.actBtn, width: "100%", marginTop: 12, opacity: canNext ? 1 : 0.4, pointerEvents: canNext ? "auto" : "none" }}
-        onClick={() => step < 3 ? setStep(step+1) : submit()}>{step < 3 ? "Devam Et" : "Randevuyu Gönder"}</button>
+        onClick={() => step < 4 ? setStep(step+1) : submit()}>{step < 4 ? "Devam Et" : "Randevuyu Gönder"}</button>
     </>
   );
 }
@@ -501,7 +550,7 @@ function AdminPanel({ shop, appts, saveAppts, saveShops, shops, onExit }) {
         <div style={{ fontSize: 11, color: subStatus(shop).state === "active" ? "#7bbf9a" : "#d8bd86", marginBottom: 18, fontWeight: 600 }}>
           {subStatus(shop).state === "active" ? "● Abonelik aktif" : "○ Deneme sürümü"} · {subStatus(shop).daysLeft} gün
         </div>
-        {[["dashboard","Bugün"],["calendar","Takvim"],["customers","Müşteriler"],["services","Hizmetler"],["revenue","Gelir"],["settings","Dükkan"]].map(([k,l]) => (
+        {[["dashboard","Bugün"],["calendar","Takvim"],["customers","Müşteriler"],["staff","Çalışanlar"],["services","Hizmetler"],["hours","Saatler"],["revenue","Gelir"],["settings","Dükkan"]].map(([k,l]) => (
           <div key={k} className="nav" style={{ ...S.nav, ...(tab === k ? S.navActive : {}) }} onClick={() => setTab(k)}>
             <span style={{ ...S.navDot, opacity: tab === k ? 1 : 0.5 }} /> {l}
           </div>
@@ -520,7 +569,9 @@ function AdminPanel({ shop, appts, saveAppts, saveShops, shops, onExit }) {
         {tab === "dashboard" && <Dashboard shop={shop} appts={myAppts} svc={svc} updateAppt={updateAppt} removeAppt={removeAppt} onBook={() => setBooking(true)} />}
         {tab === "calendar" && <CalendarView appts={myAppts} />}
         {tab === "customers" && <Customers appts={myAppts} svc={svc} />}
+        {tab === "staff" && <Staff shop={shop} updateShop={updateShop} />}
         {tab === "services" && <Services shop={shop} updateShop={updateShop} />}
+        {tab === "hours" && <Hours shop={shop} updateShop={updateShop} />}
         {tab === "revenue" && <Revenue appts={myAppts} svc={svc} />}
         {tab === "settings" && <ShopSettings shop={shop} updateShop={updateShop} />}
       </main>
@@ -528,7 +579,7 @@ function AdminPanel({ shop, appts, saveAppts, saveShops, shops, onExit }) {
       {booking && <BookingModal shop={shop} svc={svc} onClose={() => setBooking(false)} onSave={(a) => { addAppt(a); setBooking(false); setTab("dashboard"); }} />}
 
       <nav className="mobnav" style={S.mobnav}>
-        {[["dashboard","Bugün","📋"],["calendar","Takvim","🗓"],["new","Ekle","＋"],["customers","Müşteri","👤"],["services","Hizmet","✂"]].map(([k,l,ic]) => (
+        {[["dashboard","Bugün","📋"],["calendar","Takvim","🗓"],["new","Ekle","＋"],["staff","Ekip","👥"],["services","Hizmet","✂"]].map(([k,l,ic]) => (
           <div key={k} style={{ ...S.mobItem, ...(tab === k && k !== "new" ? { color: "#b89651" } : {}) }}
             onClick={() => k === "new" ? setBooking(true) : setTab(k)}>
             <div style={{ ...S.mobIcon, ...(k === "new" ? S.mobAdd : {}) }}>{ic}</div><span>{l}</span>
@@ -624,7 +675,7 @@ function ApptCard({ a, svc, updateAppt, removeAppt }) {
         </div>
         <div style={{ fontSize: 13, color: "#6b6862" }}>{s.name}</div>
         <div className="appt-meta" style={S.apptMeta}>
-          <span>{a.place === "home" ? "🏠" : "🏢"} {a.addr}</span><span>💳 {fmtMoney(s.price)}</span><span>📞 {a.phone}</span>
+          {a.staffName && <span>✂ {a.staffName}</span>}<span>{a.place === "home" ? "🏠" : "🏢"} {a.addr}</span><span>💳 {fmtMoney(s.price)}</span><span>📞 {a.phone}</span>
         </div>
         {open && a.note && <div style={S.noteBox}>📝 {a.note}</div>}
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -702,6 +753,88 @@ function Customers({ appts, svc }) {
             <div style={{ fontSize: 11, color: "#6b6862", marginTop: 10 }}>Son ziyaret: {fmtDate(c.last)}</div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ============ STAFF (çalışanlar) ============
+function Staff({ shop, updateShop }) {
+  const staff = shop.staff || [];
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("");
+  const add = () => {
+    if (!name.trim()) return;
+    updateShop({ staff: [...staff, { id: uid("st"), name: name.trim(), role: role.trim() || "Berber" }] });
+    setName(""); setRole("");
+  };
+  const remove = (id) => updateShop({ staff: staff.filter((s) => s.id !== id) });
+  return (
+    <div className="content" style={{ ...S.content, paddingTop: 32, maxWidth: 640 }}>
+      <div style={S.pageTitle}>Çalışanlar</div>
+      <div style={{ fontSize: 13, color: "#6b6862", marginTop: 6 }}>Müşteriler randevu alırken bu listeden çalışan seçer.</div>
+
+      <div style={{ ...S.panel, marginTop: 18 }}>
+        <div style={{ fontWeight: 700, marginBottom: 10 }}>Yeni çalışan ekle</div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <input style={{ ...S.input, flex: 2, minWidth: 160 }} placeholder="Ad soyad" value={name} onChange={(e) => setName(e.target.value)} />
+          <input style={{ ...S.input, flex: 1, minWidth: 120 }} placeholder="Görev (ör. Berber)" value={role} onChange={(e) => setRole(e.target.value)} />
+          <button style={S.actBtn} onClick={add}>Ekle</button>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 8 }}>
+        {staff.length === 0 && <Empty text="Henüz çalışan yok" />}
+        {staff.map((s) => (
+          <div key={s.id} style={{ ...S.panel, display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#211c16", color: "#b89651", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{s.name[0]}</div>
+              <div><div style={{ fontWeight: 700 }}>{s.name}</div><div style={{ fontSize: 12, color: "#6b6862" }}>{s.role}</div></div>
+            </div>
+            <button style={{ ...S.actBtnGhost, color: "#a8443a" }} onClick={() => remove(s.id)} disabled={staff.length <= 1}>{staff.length <= 1 ? "—" : "Çıkar"}</button>
+          </div>
+        ))}
+        {staff.length <= 1 && <div style={{ ...S.noteBox }}>En az bir çalışan bulunmalı.</div>}
+      </div>
+    </div>
+  );
+}
+
+// ============ HOURS (çalışma saatleri) ============
+function Hours({ shop, updateShop }) {
+  const hours = shop.hours || defaultHours();
+  const [h, setH] = useState(hours);
+  const [saved, setSaved] = useState(false);
+  const setDay = (day, patch) => setH({ ...h, [day]: { ...h[day], ...patch } });
+  const commit = () => { updateShop({ hours: h }); setSaved(true); setTimeout(() => setSaved(false), 1600); };
+  const opts = ["08:00","08:30","09:00","09:30","10:00","10:30","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00","22:00"];
+  return (
+    <div className="content" style={{ ...S.content, paddingTop: 32, maxWidth: 620 }}>
+      <div style={S.pageTitle}>Çalışma Saatleri</div>
+      <div style={{ fontSize: 13, color: "#6b6862", marginTop: 6, marginBottom: 18 }}>Müşteriye randevu saatleri bu aralığa göre gösterilir. Kapalı günler seçilemez.</div>
+      <div style={S.panel}>
+        {DAYS.map(([key, label]) => (
+          <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #e4e2db", flexWrap: "wrap" }}>
+            <div style={{ width: 50, fontWeight: 700, fontSize: 14 }}>{label}</div>
+            {h[key].closed ? (
+              <div style={{ flex: 1, color: "#a8443a", fontSize: 13, fontWeight: 600 }}>Kapalı</div>
+            ) : (
+              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
+                <select style={{ ...S.input, width: "auto", padding: "8px 10px" }} value={h[key].open} onChange={(e) => setDay(key, { open: e.target.value })}>
+                  {opts.map((o) => <option key={o}>{o}</option>)}
+                </select>
+                <span style={{ color: "#6b6862" }}>–</span>
+                <select style={{ ...S.input, width: "auto", padding: "8px 10px" }} value={h[key].close} onChange={(e) => setDay(key, { close: e.target.value })}>
+                  {opts.map((o) => <option key={o}>{o}</option>)}
+                </select>
+              </div>
+            )}
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#6b6862", cursor: "pointer" }}>
+              <input type="checkbox" checked={h[key].closed} onChange={(e) => setDay(key, { closed: e.target.checked })} /> Kapalı
+            </label>
+          </div>
+        ))}
+        <button style={{ ...S.actBtn, width: "100%", marginTop: 16 }} onClick={commit}>{saved ? "✓ Kaydedildi" : "Saatleri Kaydet"}</button>
       </div>
     </div>
   );
@@ -817,10 +950,12 @@ function ShopSettings({ shop, updateShop }) {
 
 function BookingModal({ shop, svc, onClose, onSave }) {
   const [step, setStep] = useState(1);
-  const [f, setF] = useState({ name: "", phone: "", service: "", date: todayISO(), time: "10:00", place: "home", addr: ANTALYA[0], vip: false, note: "" });
+  const staff = shop.staff || [];
+  const [f, setF] = useState({ staffId: staff[0]?.id || "", name: "", phone: "", service: "", date: todayISO(), time: "10:00", place: "home", addr: ANTALYA[0], vip: false, note: "" });
   const set = (k, v) => setF({ ...f, [k]: v });
   const canNext = step === 1 ? f.service : step === 2 ? f.date && f.time : f.name && f.phone;
-  const submit = () => onSave({ ...f, id: uid("ap"), shopId: shop.id, status: "pending" });
+  const staffName = (id) => (staff.find((s) => s.id === id) || {}).name || "";
+  const submit = () => onSave({ ...f, id: uid("ap"), shopId: shop.id, staffName: staffName(f.staffId), status: "pending" });
   return (
     <div style={S.modalBg} onClick={onClose}>
       <div style={S.modal} onClick={(e) => e.stopPropagation()}>
@@ -840,6 +975,7 @@ function BookingModal({ shop, svc, onClose, onSave }) {
             <Label>Bölge</Label><select value={f.addr} onChange={(e) => set("addr", e.target.value)} style={S.input}>{ANTALYA.map((a) => <option key={a}>{a}</option>)}</select>
           </>}
           {step === 3 && <>
+            <Label>Çalışan</Label><select value={f.staffId} onChange={(e) => set("staffId", e.target.value)} style={S.input}>{staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
             <Label>Ad Soyad</Label><input value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Müşteri adı" style={S.input} />
             <Label>Telefon</Label><input value={f.phone} onChange={(e) => set("phone", e.target.value)} placeholder="0532 …" style={S.input} />
             <Label>Not</Label><input value={f.note} onChange={(e) => set("note", e.target.value)} placeholder="Tercih, kesim notu…" style={S.input} />
