@@ -7,25 +7,105 @@
 <style>
   html, body, #root { margin: 0; padding: 0; min-height: 100%; }
   body { font-family: 'Manrope', sans-serif; background: #f4f3ef; }
-  #loading { display: flex; height: 100vh; align-items: center; justify-content: center; color: #6b6862; font-family: sans-serif; }
+  #loading { display: flex; flex-direction: column; gap: 10px; height: 100vh; align-items: center; justify-content: center; color: #6b6862; font-family: sans-serif; text-align: center; padding: 20px; }
+  #err { display:none; color:#a8443a; font-size:13px; max-width:340px; white-space:pre-wrap; }
 </style>
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
-<div id="root"><div id="loading">Yükleniyor…</div></div>
-<script type="text/babel" data-presets="react">
+<div id="root"><div id="loading"><div>Yükleniyor…</div><div id="err"></div></div></div>
+<script>
+  window.__bpError = function(msg){ var e=document.getElementById('err'); if(e){ e.style.display='block'; e.textContent="Hata: "+msg; } };
+  window.addEventListener('error', function(ev){ window.__bpError(ev.message || 'bilinmeyen'); });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js" onerror="window.__bpError('React yüklenemedi (internet?)')"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js" onerror="window.__bpError('ReactDOM yüklenemedi')"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.7/babel.min.js" onerror="window.__bpError('Babel yüklenemedi')"></script>
+<script>
+(function(){
+  function start(){
+    if(!window.React || !window.ReactDOM){ window.__bpError('React hazır değil'); return; }
+    if(!window.Babel){ window.__bpError('Babel hazır değil'); return; }
+    var code = document.getElementById('appsrc').textContent;
+    try {
+      var out = Babel.transform(code, { presets: [['react']] }).code;
+      var fn = new Function('React','ReactDOM', out + "\nvar __root = ReactDOM.createRoot(document.getElementById('root')); __root.render(React.createElement(App));");
+      fn(window.React, window.ReactDOM);
+    } catch(e){ window.__bpError(e.message); console.error(e); }
+  }
+  if(document.readyState === 'complete') start(); else window.addEventListener('load', start);
+})();
+</script>
+<script type="text/plain" id="appsrc">
 const { useState, useEffect } = React;
 
 
-// ============ STORAGE ============
-const store = {
-  async get(key, def) {
-    try { const v = localStorage.getItem("bp_" + key); return v != null ? JSON.parse(v) : def; }
-    catch { return def; }
+// ============ SUPABASE BAĞLANTISI ============
+// Ayarlar tarayıcıda saklanır. Boşsa sistem tek cihazda (localStorage) çalışır.
+// Doluysa her cihazdan ortak veritabanı (Supabase) kullanılır.
+const SB = {
+  get url() { try { return localStorage.getItem("bp_sb_url") || ""; } catch { return ""; } },
+  get key() { try { return localStorage.getItem("bp_sb_key") || ""; } catch { return ""; } },
+  get on() { return !!(this.url && this.key); },
+  set(url, key) { try { localStorage.setItem("bp_sb_url", url.trim().replace(/\/$/, "")); localStorage.setItem("bp_sb_key", key.trim()); } catch (e) {} },
+  clear() { try { localStorage.removeItem("bp_sb_url"); localStorage.removeItem("bp_sb_key"); } catch (e) {} },
+  headers() { return { "apikey": this.key, "Authorization": "Bearer " + this.key, "Content-Type": "application/json" }; },
+};
+
+// shops <-> DB satırı (snake_case) dönüşümü
+const shopToRow = (s) => ({ id: s.id, shop_name: s.shopName, owner: s.owner, phone: s.phone, district: s.district, about: s.about, pin: s.pin, rating: s.rating, image: s.image, sub: s.sub, sub_until: s.subUntil, trial_until: s.trialUntil, hours: s.hours, staff: s.staff, services: s.services });
+const rowToShop = (r) => ({ id: r.id, shopName: r.shop_name, owner: r.owner, phone: r.phone, district: r.district, about: r.about, pin: r.pin, rating: r.rating, image: r.image, sub: r.sub, subUntil: Number(r.sub_until) || 0, trialUntil: Number(r.trial_until) || 0, hours: r.hours, staff: r.staff || [], services: r.services || [] });
+const apptToRow = (a) => ({ id: a.id, shop_id: a.shopId, staff_name: a.staffName || "", name: a.name, phone: a.phone, service: a.service, date: a.date, time: a.time, place: a.place, addr: a.addr, vip: !!a.vip, status: a.status, note: a.note || "" });
+const rowToAppt = (r) => ({ id: r.id, shopId: r.shop_id, staffName: r.staff_name || "", name: r.name, phone: r.phone, service: r.service, date: r.date, time: r.time, place: r.place, addr: r.addr, vip: !!r.vip, status: r.status, note: r.note || "" });
+
+// ============ STORAGE (yerel) ============
+const local = {
+  get(key, def) { try { const v = localStorage.getItem("bp_" + key); return v != null ? JSON.parse(v) : def; } catch { return def; } },
+  set(key, val) { try { localStorage.setItem("bp_" + key, JSON.stringify(val)); } catch (e) { console.error(e); } },
+};
+
+// ============ VERİ KATMANI ============
+// shops ve appts için get/replace. Supabase açıksa oraya, değilse localStorage'a.
+const db = {
+  async loadShops() {
+    if (SB.on) {
+      try {
+        const r = await fetch(`${SB.url}/rest/v1/shops?select=*`, { headers: SB.headers() });
+        if (r.ok) return (await r.json()).map(rowToShop);
+      } catch (e) { console.error("Supabase shops:", e); }
+      return null;
+    }
+    return local.get("shops", null);
   },
-  async set(key, val) { try { localStorage.setItem("bp_" + key, JSON.stringify(val)); } catch (e) { console.error(e); } },
+  async loadAppts() {
+    if (SB.on) {
+      try {
+        const r = await fetch(`${SB.url}/rest/v1/appointments?select=*`, { headers: SB.headers() });
+        if (r.ok) return (await r.json()).map(rowToAppt);
+      } catch (e) { console.error("Supabase appts:", e); }
+      return [];
+    }
+    return local.get("appts", []);
+  },
+  async upsertShop(shop) {
+    if (SB.on) {
+      try { await fetch(`${SB.url}/rest/v1/shops?on_conflict=id`, { method: "POST", headers: { ...SB.headers(), "Prefer": "resolution=merge-duplicates" }, body: JSON.stringify(shopToRow(shop)) }); }
+      catch (e) { console.error(e); }
+    }
+  },
+  async deleteShop(id) {
+    if (SB.on) { try { await fetch(`${SB.url}/rest/v1/shops?id=eq.${id}`, { method: "DELETE", headers: SB.headers() }); } catch (e) { console.error(e); } }
+  },
+  async upsertAppt(appt) {
+    if (SB.on) {
+      try { await fetch(`${SB.url}/rest/v1/appointments?on_conflict=id`, { method: "POST", headers: { ...SB.headers(), "Prefer": "resolution=merge-duplicates" }, body: JSON.stringify(apptToRow(appt)) }); }
+      catch (e) { console.error(e); }
+    }
+  },
+  async deleteAppt(id) {
+    if (SB.on) { try { await fetch(`${SB.url}/rest/v1/appointments?id=eq.${id}`, { method: "DELETE", headers: SB.headers() }); } catch (e) { console.error(e); } }
+  },
+  saveLocalShops(arr) { if (!SB.on) local.set("shops", arr); },
+  saveLocalAppts(arr) { if (!SB.on) local.set("appts", arr); },
 };
 
 // ============ HELPERS ============
@@ -123,19 +203,45 @@ const SEED_APPTS = [
 function App() {
   const [shops, setShops] = useState(null);
   const [appts, setAppts] = useState(null);
-  const [route, setRoute] = useState({ name: "landing" }); // landing | customerShop | adminLogin | admin | register
+  const [route, setRoute] = useState({ name: "landing" });
+
+  // URL'de #shop... varsa doğrudan o berberin müşteri sayfasını aç
+  useEffect(() => {
+    const h = (window.location.hash || "").replace("#", "").trim();
+    if (h && h.startsWith("shop")) setRoute({ name: "customerShop", shopId: h });
+  }, []);
 
   useEffect(() => {
     (async () => {
-      const s = await store.get("shops", null);
-      setShops(s && s.length ? s : (store.set("shops", SEED_SHOPS), SEED_SHOPS));
-      const a = await store.get("appts", null);
-      setAppts(a || (store.set("appts", SEED_APPTS), SEED_APPTS));
+      let s = await db.loadShops();
+      if (!s || !s.length) {
+        s = SEED_SHOPS;
+        if (SB.on) { for (const sh of s) await db.upsertShop(sh); } else { db.saveLocalShops(s); }
+      }
+      setShops(s);
+      let a = await db.loadAppts();
+      if ((!a || !a.length) && !SB.on) { a = SEED_APPTS; db.saveLocalAppts(a); }
+      setAppts(a || []);
     })();
   }, []);
 
-  const saveShops = (next) => { setShops(next); store.set("shops", next); };
-  const saveAppts = (next) => { setAppts(next); store.set("appts", next); };
+  // shops dizisini güncelle: state + Supabase diff (upsert değişen, sil eksik olan)
+  const saveShops = (next) => {
+    const prev = shops || [];
+    setShops(next);
+    if (SB.on) {
+      next.forEach((s) => { const old = prev.find((p) => p.id === s.id); if (!old || JSON.stringify(old) !== JSON.stringify(s)) db.upsertShop(s); });
+      prev.forEach((p) => { if (!next.find((s) => s.id === p.id)) db.deleteShop(p.id); });
+    } else { db.saveLocalShops(next); }
+  };
+  const saveAppts = (next) => {
+    const prev = appts || [];
+    setAppts(next);
+    if (SB.on) {
+      next.forEach((a) => { const old = prev.find((p) => p.id === a.id); if (!old || JSON.stringify(old) !== JSON.stringify(a)) db.upsertAppt(a); });
+      prev.forEach((p) => { if (!next.find((a) => a.id === p.id)) db.deleteAppt(p.id); });
+    } else { db.saveLocalAppts(next); }
+  };
 
   if (!shops || !appts) return <div style={S.loading}>Yükleniyor…</div>;
 
@@ -146,15 +252,18 @@ function App() {
       <style>{CSS}</style>
 
       {route.name === "landing" && (
-        <Landing shops={shops} onCustomer={(shop) => go({ name: "customerShop", shopId: shop.id })}
-          onAdmin={() => go({ name: "adminLogin" })} onRegister={() => go({ name: "register" })}
-          onOwner={() => go({ name: "ownerLogin" })} />
+        <Landing onAdmin={() => go({ name: "adminLogin" })} onRegister={() => go({ name: "register" })} />
       )}
 
-      {route.name === "customerShop" && (
-        <CustomerApp shop={shops.find((s) => s.id === route.shopId)} appts={appts}
-          addAppt={(a) => saveAppts([...appts, a])} onExit={() => go({ name: "landing" })} />
-      )}
+      {route.name === "customerShop" && (() => {
+        const shop = shops.find((s) => s.id === route.shopId);
+        if (!shop) return <NotFound onExit={() => go({ name: "landing" })} text="Berber bulunamadı. Linki kontrol edin." />;
+        if (!canOperate(shop)) return <NotFound onExit={() => go({ name: "landing" })} text={`${shop.shopName} şu an randevu almıyor.`} />;
+        return (
+          <CustomerApp shop={shop} appts={appts}
+            addAppt={(a) => saveAppts([...appts, a])} onExit={() => go({ name: "landing" })} />
+        );
+      })()}
 
       {route.name === "adminLogin" && (
         <AdminLogin shops={shops} onSuccess={(shopId) => go({ name: "admin", shopId })} onBack={() => go({ name: "landing" })} onRegister={() => go({ name: "register" })} onOwner={() => go({ name: "owner" })} />
@@ -186,65 +295,24 @@ function App() {
   );
 }
 
-// ============ LANDING (berber dizini + giriş) ============
-function Landing({ shops, onCustomer, onAdmin, onRegister, onOwner }) {
-  const [q, setQ] = useState("");
-  const [dist, setDist] = useState("");
-  // Sadece aktif aboneliği (veya denemesi) olan berberler müşteriye görünür
-  const visible = shops.filter((s) => canOperate(s));
-  const filtered = visible.filter((s) =>
-    (!q || s.shopName.toLowerCase().includes(q.toLowerCase()) || s.owner.toLowerCase().includes(q.toLowerCase())) &&
-    (!dist || s.district === dist)
-  );
+// ============ LANDING (sadece berber giriş/kayıt) ============
+function Landing({ onAdmin, onRegister }) {
   return (
     <div style={S.landing}>
-      <div style={S.landHero}>
+      <div style={{ ...S.landHero, minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center" }}>
         <div style={S.landHeroInner}>
           <div style={S.landTag}>ANTALYA · MOBİL BERBER PLATFORMU</div>
           <h1 style={S.landTitle}>Berberin <span style={{ color: "#d8bd86" }}>kapına</span> gelsin</h1>
-          <p style={S.landSub}>Şehrin en iyi berberleri evinde ya da ofisinde. Berberini seç, randevunu al.</p>
-          <div style={S.landActions}>
-            <button style={S.landBtnGold} onClick={onRegister}>Berberim, katılmak istiyorum</button>
-            <button style={S.landBtnGhost} onClick={onAdmin}>Berber girişi</button>
+          <p style={S.landSub}>Evde ve ofiste randevu sistemini berberler için tasarladık. Dükkanını oluştur, müşterilerine özel randevu linkini paylaş.</p>
+          <div style={{ ...S.landActions, flexDirection: "column", maxWidth: 320, margin: "0 auto" }}>
+            <button style={{ ...S.landBtnGold, width: "100%" }} onClick={onRegister}>Berberim, katılmak istiyorum</button>
+            <button style={{ ...S.landBtnGhost, width: "100%" }} onClick={onAdmin}>Berber girişi</button>
+          </div>
+          <div style={{ marginTop: 28, fontSize: 12, color: "rgba(255,255,255,0.5)", maxWidth: 320, margin: "28px auto 0", lineHeight: 1.6 }}>
+            Müşteriler bu sayfayı kullanmaz. Her berber, panelindeki kendine özel randevu linkini müşterilerine gönderir.
           </div>
         </div>
       </div>
-
-      <div style={S.landBody}>
-        <div style={S.landSearchRow}>
-          <input style={S.landSearch} placeholder="Berber veya dükkan ara…" value={q} onChange={(e) => setQ(e.target.value)} />
-          <select style={S.landSelect} value={dist} onChange={(e) => setDist(e.target.value)}>
-            <option value="">Tüm ilçeler</option>
-            {DISTRICTS.map((d) => <option key={d}>{d}</option>)}
-          </select>
-        </div>
-
-        <div style={S.shopGrid}>
-          {filtered.length === 0 && <div style={{ color: "#6b6862", fontSize: 14 }}>Sonuç bulunamadı.</div>}
-          {filtered.map((s) => {
-            const minPrice = Math.min(...s.services.map((x) => x.price));
-            return (
-              <div key={s.id} className="shopcard" style={S.shopCard} onClick={() => onCustomer(s)}>
-                <div style={S.shopImgWrap}>
-                  {s.image ? <img src={s.image} alt="" style={S.shopImg} /> : <div style={S.shopImgPlaceholder}>{s.shopName[0]}</div>}
-                  <div style={S.shopRating}>★ {s.rating}</div>
-                </div>
-                <div style={{ padding: 16 }}>
-                  <div style={{ fontWeight: 700, fontSize: 16 }}>{s.shopName}</div>
-                  <div style={{ fontSize: 13, color: "#6b6862", marginTop: 2 }}>{s.owner} · 📍 {s.district}</div>
-                  <div style={{ fontSize: 12, color: "#8a8780", marginTop: 8, height: 34, overflow: "hidden" }}>{s.about}</div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-                    <span style={{ fontSize: 12, color: "#6b6862" }}>{s.services.length} hizmet</span>
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtMoney(minPrice)}'den başlayan</span>
-                  </div>
-                  <button style={{ ...S.actBtn, width: "100%", marginTop: 12 }}>Randevu Al</button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      <div style={S.landFoot}>Berber Platformu · Antalya · Demo sürüm</div>
     </div>
   );
 }
@@ -930,9 +998,24 @@ function ShopSettings({ shop, updateShop }) {
   const set = (k, v) => setF({ ...f, [k]: v });
   const [saved, setSaved] = useState(false);
   const commit = () => { updateShop({ ...f, pin: /^\d{4}$/.test(f.pin) ? f.pin : shop.pin }); setSaved(true); setTimeout(() => setSaved(false), 1800); };
+  const link = `${window.location.origin}${window.location.pathname}#${shop.id}`;
+  const [copied, setCopied] = useState(false);
+  const copy = () => { try { navigator.clipboard.writeText(link); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1600); };
+  const share = () => { const msg = `${shop.shopName} - Online randevu için: ${link}`; window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank"); };
   return (
     <div className="content" style={{ ...S.content, paddingTop: 32, maxWidth: 560 }}>
       <div style={S.pageTitle}>Dükkan Ayarları</div>
+
+      <div style={{ ...S.panel, marginTop: 16, background: "#211c16", color: "#fff", border: "none" }}>
+        <div style={{ fontWeight: 700, fontSize: 15 }}>📲 Müşteri randevu linkin</div>
+        <div style={{ fontSize: 12, color: "#b5b2aa", marginTop: 4, marginBottom: 12 }}>Bu linki müşterilerine gönder. Tıklayınca doğrudan senin randevu sayfan açılır.</div>
+        <div style={{ background: "#fff", color: "#211c16", borderRadius: 8, padding: "10px 12px", fontSize: 12, wordBreak: "break-all", marginBottom: 10 }}>{link}</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button style={{ ...S.actBtn, flex: 1 }} onClick={copy}>{copied ? "✓ Kopyalandı" : "Linki Kopyala"}</button>
+          <button style={{ ...S.actBtnGhost, flex: 1 }} onClick={share}>WhatsApp'tan Paylaş</button>
+        </div>
+      </div>
+
       <div style={{ marginTop: 16 }}>
         <Label>Dükkan adı</Label><input style={S.input} value={f.shopName} onChange={(e) => set("shopName", e.target.value)} />
         <Label>Sahip adı</Label><input style={S.input} value={f.owner} onChange={(e) => set("owner", e.target.value)} />
@@ -993,6 +1076,20 @@ function BookingModal({ shop, svc, onClose, onSave }) {
   );
 }
 
+// ============ NOT FOUND (geçersiz/pasif link) ============
+function NotFound({ text, onExit }) {
+  return (
+    <div style={S.authWrap}>
+      <div style={{ ...S.authCard, maxWidth: 380, textAlign: "center" }}>
+        <div style={{ fontSize: 46 }}>✂️</div>
+        <div style={{ ...S.authTitle, marginTop: 8 }}>Randevu alınamıyor</div>
+        <div style={{ fontSize: 14, color: "#6b6862", marginTop: 10 }}>{text}</div>
+        <button style={{ ...S.actBtn, width: "100%", marginTop: 18 }} onClick={onExit}>Tamam</button>
+      </div>
+    </div>
+  );
+}
+
 // ============ LOCKED (abonelik bitti) ============
 function Locked({ shop, onExit }) {
   const st = subStatus(shop);
@@ -1047,6 +1144,44 @@ function OwnerLogin({ onSuccess, onBack }) {
   );
 }
 
+// ============ DB AYARLARI (Supabase bağlantısı) ============
+function DbSettings() {
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState(SB.url);
+  const [key, setKey] = useState(SB.key);
+  const connected = SB.on;
+  const save = () => { SB.set(url, key); window.location.reload(); };
+  const disconnect = () => { SB.clear(); window.location.reload(); };
+  return (
+    <div style={{ ...S.panel, marginBottom: 18, borderColor: connected ? "#2f6b4f" : "#e4e2db" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setOpen(!open)}>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>🗄️ Veritabanı Bağlantısı</div>
+          <div style={{ fontSize: 12, color: connected ? "#2f6b4f" : "#a8443a", marginTop: 2, fontWeight: 600 }}>
+            {connected ? "● Bağlı — tüm cihazlardan ortak veri" : "○ Bağlı değil — sadece bu cihazda"}
+          </div>
+        </div>
+        <span style={{ color: "#6b6862" }}>{open ? "▲" : "▼"}</span>
+      </div>
+      {open && (
+        <div style={{ marginTop: 14, borderTop: "1px solid #e4e2db", paddingTop: 14 }}>
+          <div style={{ ...S.noteBox, marginTop: 0, marginBottom: 12 }}>
+            Supabase hesabını açtıktan sonra <b>Project URL</b> ve <b>anon public key</b> bilgilerini buraya gir, Kaydet'e bas. Sistem tüm cihazlardan ortak veritabanını kullanmaya başlar.
+          </div>
+          <Label>Supabase Project URL</Label>
+          <input style={S.input} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://xxxxx.supabase.co" />
+          <Label>anon public key</Label>
+          <input style={S.input} value={key} onChange={(e) => setKey(e.target.value)} placeholder="eyJhbGc..." />
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <button style={{ ...S.actBtn, flex: 1, opacity: (url && key) ? 1 : 0.4, pointerEvents: (url && key) ? "auto" : "none" }} onClick={save}>Bağlan ve Kaydet</button>
+            {connected && <button style={{ ...S.actBtnGhost, color: "#a8443a" }} onClick={disconnect}>Bağlantıyı Kes</button>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ============ OWNER PANEL (abonelik yönetimi) ============
 function OwnerPanel({ shops, saveShops, onExit }) {
   const [q, setQ] = useState("");
@@ -1083,6 +1218,7 @@ function OwnerPanel({ shops, saveShops, onExit }) {
       </div>
 
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px" }}>
+        <DbSettings />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 22 }}>
           <Stat label="Aktif Abone" value={counts.active} trend="ödeme yapan" up />
           <Stat label="Denemede" value={counts.trial} trend="ücretsiz" />
@@ -1287,9 +1423,6 @@ const CSS = `
   }
 `;
 
-
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App />);
 </script>
 </body>
 </html>
