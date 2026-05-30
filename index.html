@@ -177,6 +177,26 @@ const isClosed = (shop, iso) => {
   return !h || h.closed;
 };
 
+// --- Süre bazlı çakışma yardımcıları (30 dk'lık dilimler) ---
+const SLOT_MIN = 30;
+const toMin = (t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+const toHHMM = (m) => String(Math.floor(m / 60) % 24).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+// Bir randevunun süresi boyunca kapattığı tüm 30 dk'lık başlangıç saatleri
+const occupiedSlots = (startTime, durMin) => {
+  const out = []; const start = toMin(startTime); const need = Math.max(1, Math.ceil((durMin || SLOT_MIN) / SLOT_MIN));
+  for (let i = 0; i < need; i++) out.push(toHHMM(start + i * SLOT_MIN));
+  return out;
+};
+// shop.services'ten süreyi bul
+const svcDur = (shop, serviceId) => { const s = (shop.services || []).find((x) => x.id === serviceId); return s ? s.dur : SLOT_MIN; };
+// Belirli çalışan+gün için dolu (meşgul) başlangıç saatleri kümesi — her randevunun süresine göre
+const busySlots = (appts, shop, iso, staffNameVal) => {
+  const set = new Set();
+  (appts || []).filter((a) => a.shopId === shop.id && a.date === iso && a.staffName === staffNameVal)
+    .forEach((a) => occupiedSlots(a.time, svcDur(shop, a.service)).forEach((t) => set.add(t)));
+  return set;
+};
+
 const defaultServices = () => [
   { id: uid("sv"), name: "Klasik Traş + Saç Kesimi", dur: 45, price: 1100, desc: "Saç kesimi, sakal düzeltme" },
   { id: uid("sv"), name: "Sakal Şekillendirme + Sıcak Havlu", dur: 45, price: 1350, desc: "Sıcak havlu ritüeli, jiletle bitiş" },
@@ -527,7 +547,7 @@ function CustomerApp({ shop, appts, addAppt, onExit, locked }) {
                       <div style={{ fontSize: 12, fontWeight: 700, color: st[1] }}>{st[0]}</div>
                     </div>
                     <div style={{ fontSize: 13, color: "#6b6862", marginTop: 4 }}>{fmtDate(a.date)} · {a.time}</div>
-                    <div style={{ fontSize: 13, color: "#6b6862" }}>{a.place === "home" ? "🏠" : "🏢"} {a.addr} · {fmtMoney(svc(a.service).price)}</div>
+                    <div style={{ fontSize: 13, color: "#6b6862" }}>{a.addr ? (a.place === "home" ? "🏠 " : "🏢 ") + a.addr + " · " : ""}{fmtMoney(svc(a.service).price)}</div>
                   </div>
                 );
               })}
@@ -547,10 +567,19 @@ function CustomerBooking({ shop, svc, appts, onBack, onSave }) {
   const slots = slotsForDate(shop, f.date);
   const closed = isClosed(shop, f.date);
   const staffName = (id) => (staff.find((s) => s.id === id) || {}).name || "";
-  // Seçili çalışan + tarih için dolu saatler (iptal hariç tüm randevular o saati kapatır)
-  const takenTimes = (appts || []).filter((a) => a.shopId === shop.id && a.date === f.date && a.staffName === staffName(f.staffId)).map((a) => a.time);
-  const isTaken = (t) => takenTimes.includes(t);
-  const canNext = step === 1 ? f.staffId : step === 2 ? f.service : step === 3 ? (f.date && f.time && !closed && !isTaken(f.time)) : (f.name && f.phone);
+  // Seçili çalışan + tarih için meşgul dilimler (her randevu süresi kadar dilim kapatır)
+  const busy = busySlots(appts, shop, f.date, staffName(f.staffId));
+  const selDur = f.service ? svcDur(shop, f.service) : SLOT_MIN;
+  // Kapanış saati (bugünkü çalışma günü)
+  const dk = DAY_KEY[new Date(f.date + "T00:00:00").getDay()];
+  const closeMin = (shop.hours || defaultHours())[dk] ? toMin((shop.hours || defaultHours())[dk].close) : 24 * 60;
+  // Bir başlangıç saati seçilebilir mi: seçilen hizmet süresi boyunca tüm dilimler boş + kapanışı aşmıyor
+  const slotTaken = (t) => {
+    const need = occupiedSlots(t, selDur);
+    if (toMin(t) + selDur > closeMin) return true;          // hizmet kapanışı aşıyor
+    return need.some((s) => busy.has(s));                    // herhangi bir dilim dolu
+  };
+  const canNext = step === 1 ? f.staffId : step === 2 ? f.service : step === 3 ? (f.date && f.time && !closed && !slotTaken(f.time)) : (f.name && f.phone);
   const submit = () => onSave({ ...f, id: uid("ap"), shopId: shop.id, staffName: staffName(f.staffId), vip: false, status: "pending" });
 
   return (
@@ -596,7 +625,7 @@ function CustomerBooking({ shop, svc, appts, onBack, onSave }) {
             <>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {slots.map((t) => {
-                  const taken = isTaken(t);
+                  const taken = slotTaken(t);
                   return (
                     <div key={t}
                       style={{ ...S.timePick,
@@ -612,24 +641,16 @@ function CustomerBooking({ shop, svc, appts, onBack, onSave }) {
               </div>
             </>
           )}
-          <Label>Konum</Label>
-          <div style={{ display: "flex", gap: 8 }}>
-            {[["home","🏠 Evim"],["office","🏢 Ofisim"]].map(([k,l]) => (
-              <div key={k} style={{ ...S.timePick, flex: 1, textAlign: "center", ...(f.place === k ? S.svcPickActive : {}) }} onClick={() => set("place", k)}>{l}</div>
-            ))}
-          </div>
-          <Label>Adres</Label>
-          <input value={f.addr} onChange={(e) => set("addr", e.target.value)} style={S.input} placeholder="Mahalle, sokak, bina/daire no" />
         </>}
         {step === 4 && <>
           <Label>Ad Soyad</Label>
           <input value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Adınız soyadınız" style={S.input} />
           <Label>Telefon</Label>
           <input value={f.phone} onChange={(e) => set("phone", e.target.value)} placeholder="0532 …" style={S.input} />
-          <Label>Adres detayı / not (opsiyonel)</Label>
-          <input value={f.note} onChange={(e) => set("note", e.target.value)} placeholder="Kapı no, kat, tercih…" style={S.input} />
+          <Label>Not (opsiyonel)</Label>
+          <input value={f.note} onChange={(e) => set("note", e.target.value)} placeholder="Tercih, kesim notu…" style={S.input} />
           {f.service && <div style={{ ...S.noteBox, marginTop: 16 }}>
-            Özet: <b>{staffName(f.staffId)}</b> · <b>{svc(f.service).name}</b><br/>{fmtDate(f.date)} {f.time} · {f.place === "home" ? "Ev" : "Ofis"}, {f.addr}
+            Özet: <b>{staffName(f.staffId)}</b> · <b>{svc(f.service).name}</b><br/>{fmtDate(f.date)} {f.time}
             <div style={{ marginTop: 4 }}>Tutar: <b>{fmtMoney(svc(f.service).price)}</b></div>
           </div>}
         </>}
@@ -773,8 +794,8 @@ function Dashboard({ shop, appts, svc, updateAppt, removeAppt, onBook }) {
               {sorted.map((a, i) => (
                 <div key={a.id} style={{ ...S.routeStep, paddingBottom: i === sorted.length-1 ? 0 : 18 }}>
                   <div style={{ ...S.routeDot, background: a.status === "done" ? "#b89651" : "#fff" }} />
-                  <div><div style={{ fontSize: 13, fontWeight: 700 }}>{a.addr}</div>
-                    <div style={{ fontSize: 12, color: "#6b6862" }}>{a.name} · {a.time}</div>
+                  <div><div style={{ fontSize: 13, fontWeight: 700 }}>{a.time} · {a.name}</div>
+                    <div style={{ fontSize: 12, color: "#6b6862" }}>{svc(a.service).name}{a.addr ? " · " + a.addr : ""}</div>
                     {a.status === "done" && <div style={{ fontSize: 11, color: "#2f6b4f", fontWeight: 600 }}>✓ Tamamlandı</div>}
                     {a.status === "route" && <div style={{ fontSize: 11, color: "#b89651", fontWeight: 600 }}>→ yolda</div>}</div>
                 </div>
@@ -803,7 +824,7 @@ function ApptCard({ a, svc, updateAppt, removeAppt }) {
         </div>
         <div style={{ fontSize: 13, color: "#6b6862" }}>{s.name}</div>
         <div className="appt-meta" style={S.apptMeta}>
-          {a.staffName && <span>✂ {a.staffName}</span>}<span>{a.place === "home" ? "🏠" : "🏢"} {a.addr}</span><span>💳 {fmtMoney(s.price)}</span><span>📞 {a.phone}</span>
+          {a.staffName && <span>✂ {a.staffName}</span>}{a.addr && <span>{a.place === "home" ? "🏠" : "🏢"} {a.addr}</span>}<span>💳 {fmtMoney(s.price)}</span><span>📞 {a.phone}</span>
         </div>
         {open && a.note && <div style={S.noteBox}>📝 {a.note}</div>}
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -1184,7 +1205,9 @@ function BookingModal({ shop, svc, appts, onClose, onSave }) {
   const canNext = step === 1 ? f.service : step === 2 ? f.date && f.time : f.name && f.phone;
   const staffName = (id) => (staff.find((s) => s.id === id) || {}).name || "";
   // O gün o saatte dolu olan randevular (seçili çalışan; berber 3. adımda çalışanı seçer, o yüzden burada tüm dükkan için gösterip işaret koyuyoruz)
-  const dayTaken = (appts || []).filter((a) => a.shopId === shop.id && a.date === f.date).map((a) => a.time);
+  const dayBusy = new Set();
+  (appts || []).filter((a) => a.shopId === shop.id && a.date === f.date).forEach((a) => occupiedSlots(a.time, svcDur(shop, a.service)).forEach((t) => dayBusy.add(t)));
+  const dayTaken = [...dayBusy];
   const submit = () => onSave({ ...f, id: uid("ap"), shopId: shop.id, staffName: staffName(f.staffId), status: "pending" });
   const baseSlots = slotsForDate(shop, f.date).length ? slotsForDate(shop, f.date) : TIMES.filter((t) => f.date !== todayISO() || t > (String(new Date().getHours()).padStart(2,"0")+":"+String(new Date().getMinutes()).padStart(2,"0")));
   return (
