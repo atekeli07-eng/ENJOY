@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Berber Platformu</title>
+<title>Berber Randevu Platformu</title>
 <style>
   html, body, #root { margin: 0; padding: 0; min-height: 100%; }
   body { font-family: 'Manrope', sans-serif; background: #f4f3ef; }
@@ -52,8 +52,8 @@ const SB = {
 };
 
 // shops <-> DB satırı (snake_case) dönüşümü
-const shopToRow = (s) => ({ id: s.id, shop_name: s.shopName, owner: s.owner, phone: s.phone, city: s.city || "", district: s.district, about: s.about, pin: s.pin, rating: s.rating, image: s.image, sub: s.sub, sub_until: s.subUntil, trial_until: s.trialUntil, hours: s.hours, staff: s.staff, services: s.services });
-const rowToShop = (r) => ({ id: r.id, shopName: r.shop_name, owner: r.owner, phone: r.phone, city: r.city || "", district: r.district, about: r.about, pin: r.pin, rating: r.rating, image: r.image, sub: r.sub, subUntil: Number(r.sub_until) || 0, trialUntil: Number(r.trial_until) || 0, hours: r.hours, staff: r.staff || [], services: r.services || [] });
+const shopToRow = (s) => ({ id: s.id, shop_name: s.shopName, owner: s.owner, phone: s.phone, city: s.city || "", district: s.district, about: s.about, pin: s.pin, rating: s.rating, image: s.image, sub: s.sub, sub_until: s.subUntil, trial_until: s.trialUntil, hours: s.hours, off_days: s.offDays || [], staff: s.staff, services: s.services });
+const rowToShop = (r) => ({ id: r.id, shopName: r.shop_name, owner: r.owner, phone: r.phone, city: r.city || "", district: r.district, about: r.about, pin: r.pin, rating: r.rating, image: r.image, sub: r.sub, subUntil: Number(r.sub_until) || 0, trialUntil: Number(r.trial_until) || 0, hours: r.hours, offDays: r.off_days || [], staff: r.staff || [], services: r.services || [] });
 const apptToRow = (a) => ({ id: a.id, shop_id: a.shopId, staff_name: a.staffName || "", name: a.name, phone: a.phone, service: a.service, date: a.date, time: a.time, place: a.place, addr: a.addr, vip: !!a.vip, status: a.status, note: a.note || "" });
 const rowToAppt = (r) => ({ id: r.id, shopId: r.shop_id, staffName: r.staff_name || "", name: r.name, phone: r.phone, service: r.service, date: r.date, time: r.time, place: r.place, addr: r.addr, vip: !!r.vip, status: r.status, note: r.note || "" });
 
@@ -140,29 +140,40 @@ const canOperate = (shop) => { const s = subStatus(shop).state; return s === "tr
 const CITIES = ["Adana","Adıyaman","Afyonkarahisar","Ağrı","Amasya","Ankara","Antalya","Artvin","Aydın","Balıkesir","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa","Çanakkale","Çankırı","Çorum","Denizli","Diyarbakır","Edirne","Elazığ","Erzincan","Erzurum","Eskişehir","Gaziantep","Giresun","Gümüşhane","Hakkari","Hatay","Isparta","Mersin","İstanbul","İzmir","Kars","Kastamonu","Kayseri","Kırklareli","Kırşehir","Kocaeli","Konya","Kütahya","Malatya","Manisa","Kahramanmaraş","Mardin","Muğla","Muş","Nevşehir","Niğde","Ordu","Rize","Sakarya","Samsun","Siirt","Sinop","Sivas","Tekirdağ","Tokat","Trabzon","Tunceli","Şanlıurfa","Uşak","Van","Yozgat","Zonguldak","Aksaray","Bayburt","Karaman","Kırıkkale","Batman","Şırnak","Bartın","Ardahan","Iğdır","Yalova","Karabük","Kilis","Osmaniye","Düzce"];
 const DISTRICTS = CITIES; // geriye dönük uyumluluk
 const ANTALYA = ["Ev adresim", "Ofis adresim", "Diğer"];
-const TIMES = ["09:00","09:30","10:00","11:00","11:30","13:00","13:30","14:30","15:00","16:00","17:00","17:30","18:30"];
+const TIMES = ["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30","20:00","20:30","21:00","21:30","22:00","22:30","23:00"];
 const DAYS = [["mon","Pzt"],["tue","Sal"],["wed","Çar"],["thu","Per"],["fri","Cum"],["sat","Cmt"],["sun","Paz"]];
 const DAY_KEY = ["sun","mon","tue","wed","thu","fri","sat"]; // JS getDay() sırası
 const defaultHours = () => ({
-  mon: { open: "09:00", close: "19:00", closed: false },
-  tue: { open: "09:00", close: "19:00", closed: false },
-  wed: { open: "09:00", close: "19:00", closed: false },
-  thu: { open: "09:00", close: "19:00", closed: false },
-  fri: { open: "09:00", close: "19:00", closed: false },
-  sat: { open: "10:00", close: "18:00", closed: false },
-  sun: { open: "10:00", close: "16:00", closed: true },
+  mon: { open: "08:00", close: "22:00", closed: false },
+  tue: { open: "08:00", close: "22:00", closed: false },
+  wed: { open: "08:00", close: "22:00", closed: false },
+  thu: { open: "08:00", close: "22:00", closed: false },
+  fri: { open: "08:00", close: "22:00", closed: false },
+  sat: { open: "09:00", close: "22:00", closed: false },
+  sun: { open: "10:00", close: "20:00", closed: false },
 });
 const defaultStaff = (owner) => [{ id: uid("st"), name: owner || "Usta", role: "Berber" }];
 // Bir gün için, çalışma saatleri içinde kalan randevu saatlerini döndür
-const slotsForDate = (hours, iso) => {
+const slotsForDate = (shop, iso) => {
+  const hours = shop.hours || defaultHours();
+  const offDays = shop.offDays || [];
+  if (offDays.includes(iso)) return [];
   const dk = DAY_KEY[new Date(iso + "T00:00:00").getDay()];
-  const h = (hours || defaultHours())[dk];
+  const h = hours[dk];
   if (!h || h.closed) return [];
-  return TIMES.filter((t) => t >= h.open && t <= h.close);
+  let list = TIMES.filter((t) => t >= h.open && t <= h.close);
+  if (iso === todayISO()) {
+    const now = new Date();
+    const cur = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+    list = list.filter((t) => t > cur);
+  }
+  return list;
 };
-const isClosed = (hours, iso) => {
+const isClosed = (shop, iso) => {
+  const offDays = shop.offDays || [];
+  if (offDays.includes(iso)) return true;
   const dk = DAY_KEY[new Date(iso + "T00:00:00").getDay()];
-  const h = (hours || defaultHours())[dk];
+  const h = (shop.hours || defaultHours())[dk];
   return !h || h.closed;
 };
 
@@ -314,9 +325,9 @@ function Landing({ onAdmin, onRegister }) {
     <div style={S.landing}>
       <div style={{ ...S.landHero, minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center" }}>
         <div style={S.landHeroInner}>
-          <div style={S.landTag}>ANTALYA · MOBİL BERBER PLATFORMU</div>
-          <h1 style={S.landTitle}>Berberin <span style={{ color: "#d8bd86" }}>kapına</span> gelsin</h1>
-          <p style={S.landSub}>Evde ve ofiste randevu sistemini berberler için tasarladık. Dükkanını oluştur, müşterilerine özel randevu linkini paylaş.</p>
+          <div style={S.landTag}>MOBİL BERBER RANDEVU PLATFORMU</div>
+          <h1 style={S.landTitle}>Randevular artık <span style={{ color: "#d8bd86" }}>senin elinde</span></h1>
+          <p style={S.landSub}>Müşterilerin telefonla aramak yerine senin özel linkinden randevu alsın. Dükkanını oluştur, linkini paylaş, randevuların panelde toplansın.</p>
           <div style={{ ...S.landActions, flexDirection: "column", maxWidth: 320, margin: "0 auto" }}>
             <button style={{ ...S.landBtnGold, width: "100%" }} onClick={onRegister}>Berberim, katılmak istiyorum</button>
             <button style={{ ...S.landBtnGhost, width: "100%" }} onClick={onAdmin}>Berber girişi</button>
@@ -474,7 +485,7 @@ function CustomerApp({ shop, appts, addAppt, onExit, locked }) {
           </>
         )}
 
-        {screen === "book" && <CustomerBooking shop={shop} svc={svc} onBack={() => setScreen("home")} onSave={handleSave} />}
+        {screen === "book" && <CustomerBooking shop={shop} svc={svc} appts={appts} onBack={() => setScreen("home")} onSave={handleSave} />}
 
         {screen === "done" && last && (
           <div style={{ textAlign: "center", paddingTop: 24 }}>
@@ -528,15 +539,18 @@ function CustomerApp({ shop, appts, addAppt, onExit, locked }) {
   );
 }
 
-function CustomerBooking({ shop, svc, onBack, onSave }) {
+function CustomerBooking({ shop, svc, appts, onBack, onSave }) {
   const [step, setStep] = useState(1);
   const staff = shop.staff || [];
   const [f, setF] = useState({ staffId: staff.length === 1 ? staff[0].id : "", name: "", phone: "", service: "", date: todayISO(), time: "", place: "home", addr: "", note: "" });
   const set = (k, v) => setF({ ...f, [k]: v });
-  const slots = slotsForDate(shop.hours, f.date);
-  const closed = isClosed(shop.hours, f.date);
-  const canNext = step === 1 ? f.staffId : step === 2 ? f.service : step === 3 ? (f.date && f.time && !closed) : (f.name && f.phone);
+  const slots = slotsForDate(shop, f.date);
+  const closed = isClosed(shop, f.date);
   const staffName = (id) => (staff.find((s) => s.id === id) || {}).name || "";
+  // Seçili çalışan + tarih için dolu saatler (iptal hariç tüm randevular o saati kapatır)
+  const takenTimes = (appts || []).filter((a) => a.shopId === shop.id && a.date === f.date && a.staffName === staffName(f.staffId)).map((a) => a.time);
+  const isTaken = (t) => takenTimes.includes(t);
+  const canNext = step === 1 ? f.staffId : step === 2 ? f.service : step === 3 ? (f.date && f.time && !closed && !isTaken(f.time)) : (f.name && f.phone);
   const submit = () => onSave({ ...f, id: uid("ap"), shopId: shop.id, staffName: staffName(f.staffId), vip: false, status: "pending" });
 
   return (
@@ -579,9 +593,24 @@ function CustomerBooking({ shop, svc, onBack, onSave }) {
           ) : slots.length === 0 ? (
             <div style={{ ...S.noteBox }}>Bu gün için uygun saat yok.</div>
           ) : (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {slots.map((t) => <div key={t} style={{ ...S.timePick, ...(f.time === t ? S.svcPickActive : {}) }} onClick={() => set("time", t)}>{t}</div>)}
-            </div>
+            <>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {slots.map((t) => {
+                  const taken = isTaken(t);
+                  return (
+                    <div key={t}
+                      style={{ ...S.timePick,
+                        ...(taken ? { background: "#f0eeea", color: "#bdb9b1", textDecoration: "line-through", cursor: "not-allowed", borderColor: "#eceae4" } : {}),
+                        ...(f.time === t && !taken ? S.svcPickActive : {}) }}
+                      onClick={() => { if (!taken) set("time", t); }}>{t}</div>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", gap: 16, marginTop: 10, fontSize: 11, color: "#6b6862" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 12, height: 12, borderRadius: 3, border: "1px solid #e4e2db", display: "inline-block" }} /> Boş</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 12, height: 12, borderRadius: 3, background: "#f0eeea", display: "inline-block" }} /> Dolu</span>
+              </div>
+            </>
           )}
           <Label>Konum</Label>
           <div style={{ display: "flex", gap: 8 }}>
@@ -659,7 +688,7 @@ function AdminPanel({ shop, appts, saveAppts, saveShops, shops, onExit }) {
         {tab === "settings" && <ShopSettings shop={shop} updateShop={updateShop} />}
       </main>
 
-      {booking && <BookingModal shop={shop} svc={svc} onClose={() => setBooking(false)} onSave={(a) => { addAppt(a); setBooking(false); setTab("dashboard"); }} />}
+      {booking && <BookingModal shop={shop} svc={svc} appts={myAppts} onClose={() => setBooking(false)} onSave={(a) => { addAppt(a); setBooking(false); setTab("dashboard"); }} />}
 
       {moreOpen && (
         <div style={S.sheetBg} onClick={() => setMoreOpen(false)}>
@@ -906,12 +935,55 @@ function Hours({ shop, updateShop }) {
   const [saved, setSaved] = useState(false);
   const setDay = (day, patch) => setH({ ...h, [day]: { ...h[day], ...patch } });
   const commit = () => { updateShop({ hours: h }); setSaved(true); setTimeout(() => setSaved(false), 1600); };
-  const opts = ["08:00","08:30","09:00","09:30","10:00","10:30","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00","22:00"];
+  const opts = ["07:00","07:30","08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00","18:30","19:00","19:30","20:00","20:30","21:00","21:30","22:00","22:30","23:00","23:30","00:00"];
+
+  // İzin / kapalı günler (belirli tarihler)
+  const offDays = shop.offDays || [];
+  const [newOff, setNewOff] = useState(todayISO());
+  const addOff = () => { if (newOff && !offDays.includes(newOff)) updateShop({ offDays: [...offDays, newOff].sort() }); };
+  const removeOff = (d) => updateShop({ offDays: offDays.filter((x) => x !== d) });
+  const closeToday = () => { const t = todayISO(); if (!offDays.includes(t)) updateShop({ offDays: [...offDays, t].sort() }); };
+  const todayOff = offDays.includes(todayISO());
+
   return (
     <div className="content" style={{ ...S.content, paddingTop: 32, maxWidth: 620 }}>
       <div style={S.pageTitle}>Çalışma Saatleri</div>
-      <div style={{ fontSize: 13, color: "#6b6862", marginTop: 6, marginBottom: 18 }}>Müşteriye randevu saatleri bu aralığa göre gösterilir. Kapalı günler seçilemez.</div>
+      <div style={{ fontSize: 13, color: "#6b6862", marginTop: 6, marginBottom: 18 }}>Müşteriye randevu saatleri bu aralığa göre gösterilir. Kapalı gün ve izin günlerinde randevu alınamaz.</div>
+
+      {/* Hızlı kapatma */}
+      <div style={{ ...S.panel, background: todayOff ? "#f7e4e1" : "#211c16", color: todayOff ? "#a8443a" : "#fff", border: "none" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>{todayOff ? "🔴 Bugün kapalısınız" : "Kendine vakit mi lazım?"}</div>
+            <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>{todayOff ? "Bugün için yeni randevu alınamıyor." : "Tek dokunuşla bugünü randevuya kapat."}</div>
+          </div>
+          {todayOff ? (
+            <button style={{ ...S.actBtnGhost, background: "#fff" }} onClick={() => removeOff(todayISO())}>Bugünü Aç</button>
+          ) : (
+            <button style={{ ...S.actBtn }} onClick={closeToday}>Bugünü Kapat</button>
+          )}
+        </div>
+      </div>
+
+      {/* İzin / tatil günleri */}
       <div style={S.panel}>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>İzin / Tatil Günleri</div>
+        <div style={{ fontSize: 12, color: "#6b6862", marginBottom: 12 }}>Belirli bir günü kapatmak için tarih seçip ekleyin (izin, tatil, kişisel zaman).</div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <input type="date" min={todayISO()} value={newOff} onChange={(e) => setNewOff(e.target.value)} style={{ ...S.input, flex: 1 }} />
+          <button style={S.actBtn} onClick={addOff}>Ekle</button>
+        </div>
+        {offDays.length === 0 && <div style={{ fontSize: 13, color: "#6b6862" }}>Henüz izin günü yok.</div>}
+        {offDays.filter((d) => d >= todayISO()).map((d) => (
+          <div key={d} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #e4e2db" }}>
+            <span style={{ fontSize: 14 }}>📅 {fmtDate(d)}</span>
+            <button style={{ ...S.actBtnGhost, color: "#a8443a" }} onClick={() => removeOff(d)}>Kaldır</button>
+          </div>
+        ))}
+      </div>
+
+      <div style={S.panel}>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>Haftalık Düzen</div>
         {DAYS.map(([key, label]) => (
           <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #e4e2db", flexWrap: "wrap" }}>
             <div style={{ width: 50, fontWeight: 700, fontSize: 14 }}>{label}</div>
@@ -1104,14 +1176,17 @@ function ShopSettings({ shop, updateShop }) {
   );
 }
 
-function BookingModal({ shop, svc, onClose, onSave }) {
+function BookingModal({ shop, svc, appts, onClose, onSave }) {
   const [step, setStep] = useState(1);
   const staff = shop.staff || [];
-  const [f, setF] = useState({ staffId: staff[0]?.id || "", name: "", phone: "", service: "", date: todayISO(), time: "10:00", place: "home", addr: "", vip: false, note: "" });
+  const [f, setF] = useState({ staffId: staff[0]?.id || "", name: "", phone: "", service: "", date: todayISO(), time: "", place: "home", addr: "", vip: false, note: "" });
   const set = (k, v) => setF({ ...f, [k]: v });
   const canNext = step === 1 ? f.service : step === 2 ? f.date && f.time : f.name && f.phone;
   const staffName = (id) => (staff.find((s) => s.id === id) || {}).name || "";
+  // O gün o saatte dolu olan randevular (seçili çalışan; berber 3. adımda çalışanı seçer, o yüzden burada tüm dükkan için gösterip işaret koyuyoruz)
+  const dayTaken = (appts || []).filter((a) => a.shopId === shop.id && a.date === f.date).map((a) => a.time);
   const submit = () => onSave({ ...f, id: uid("ap"), shopId: shop.id, staffName: staffName(f.staffId), status: "pending" });
+  const baseSlots = slotsForDate(shop, f.date).length ? slotsForDate(shop, f.date) : TIMES.filter((t) => f.date !== todayISO() || t > (String(new Date().getHours()).padStart(2,"0")+":"+String(new Date().getMinutes()).padStart(2,"0")));
   return (
     <div style={S.modalBg} onClick={onClose}>
       <div style={S.modal} onClick={(e) => e.stopPropagation()}>
@@ -1125,8 +1200,9 @@ function BookingModal({ shop, svc, onClose, onSave }) {
             </div>
           ))}
           {step === 2 && <>
-            <Label>Tarih</Label><input type="date" value={f.date} min={todayISO()} onChange={(e) => set("date", e.target.value)} style={S.input} />
-            <Label>Saat</Label><div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{TIMES.map((t) => <div key={t} style={{ ...S.timePick, ...(f.time === t ? S.svcPickActive : {}) }} onClick={() => set("time", t)}>{t}</div>)}</div>
+            <Label>Tarih</Label><input type="date" value={f.date} min={todayISO()} onChange={(e) => setF({ ...f, date: e.target.value || f.date, time: "" })} style={S.input} />
+            <Label>Saat</Label><div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{baseSlots.map((t) => { const taken = dayTaken.includes(t); return <div key={t} style={{ ...S.timePick, ...(taken ? { background: "#f0eeea", color: "#bdb9b1" } : {}), ...(f.time === t ? S.svcPickActive : {}) }} onClick={() => set("time", t)}>{t}{taken ? " •" : ""}</div>; })}</div>
+            <div style={{ fontSize: 11, color: "#6b6862", marginTop: 6 }}>• işaretli saatlerde o gün başka randevu var.</div>
             <Label>Konum</Label><div style={{ display: "flex", gap: 8 }}>{[["home","🏠 Ev"],["office","🏢 Ofis"]].map(([k,l]) => <div key={k} style={{ ...S.timePick, flex: 1, textAlign: "center", ...(f.place === k ? S.svcPickActive : {}) }} onClick={() => set("place", k)}>{l}</div>)}</div>
             <Label>Adres</Label><input value={f.addr} onChange={(e) => set("addr", e.target.value)} style={S.input} placeholder="Mahalle, sokak, no" />
           </>}
