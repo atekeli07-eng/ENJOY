@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Berber Platformu · Antalya</title>
+<title>Berber Platformu</title>
 <style>
   html, body, #root { margin: 0; padding: 0; min-height: 100%; }
   body { font-family: 'Manrope', sans-serif; background: #f4f3ef; }
@@ -52,8 +52,8 @@ const SB = {
 };
 
 // shops <-> DB satırı (snake_case) dönüşümü
-const shopToRow = (s) => ({ id: s.id, shop_name: s.shopName, owner: s.owner, phone: s.phone, district: s.district, about: s.about, pin: s.pin, rating: s.rating, image: s.image, sub: s.sub, sub_until: s.subUntil, trial_until: s.trialUntil, hours: s.hours, staff: s.staff, services: s.services });
-const rowToShop = (r) => ({ id: r.id, shopName: r.shop_name, owner: r.owner, phone: r.phone, district: r.district, about: r.about, pin: r.pin, rating: r.rating, image: r.image, sub: r.sub, subUntil: Number(r.sub_until) || 0, trialUntil: Number(r.trial_until) || 0, hours: r.hours, staff: r.staff || [], services: r.services || [] });
+const shopToRow = (s) => ({ id: s.id, shop_name: s.shopName, owner: s.owner, phone: s.phone, city: s.city || "", district: s.district, about: s.about, pin: s.pin, rating: s.rating, image: s.image, sub: s.sub, sub_until: s.subUntil, trial_until: s.trialUntil, hours: s.hours, staff: s.staff, services: s.services });
+const rowToShop = (r) => ({ id: r.id, shopName: r.shop_name, owner: r.owner, phone: r.phone, city: r.city || "", district: r.district, about: r.about, pin: r.pin, rating: r.rating, image: r.image, sub: r.sub, subUntil: Number(r.sub_until) || 0, trialUntil: Number(r.trial_until) || 0, hours: r.hours, staff: r.staff || [], services: r.services || [] });
 const apptToRow = (a) => ({ id: a.id, shop_id: a.shopId, staff_name: a.staffName || "", name: a.name, phone: a.phone, service: a.service, date: a.date, time: a.time, place: a.place, addr: a.addr, vip: !!a.vip, status: a.status, note: a.note || "" });
 const rowToAppt = (r) => ({ id: r.id, shopId: r.shop_id, staffName: r.staff_name || "", name: r.name, phone: r.phone, service: r.service, date: r.date, time: r.time, place: r.place, addr: r.addr, vip: !!r.vip, status: r.status, note: r.note || "" });
 
@@ -137,8 +137,9 @@ const subStatus = (shop) => {
   return { state: "trial", daysLeft: left, label: `Deneme · ${left} gün` };
 };
 const canOperate = (shop) => { const s = subStatus(shop).state; return s === "trial" || s === "active"; };
-const ANTALYA = ["Lara, Muratpaşa", "Konyaaltı", "Kepez", "Belek, Serik", "Döşemealtı", "Muratpaşa Merkez", "Kundu", "Side, Manavgat"];
-const DISTRICTS = ["Muratpaşa", "Konyaaltı", "Kepez", "Serik", "Döşemealtı", "Manavgat", "Aksu", "Alanya"];
+const CITIES = ["Adana","Adıyaman","Afyonkarahisar","Ağrı","Amasya","Ankara","Antalya","Artvin","Aydın","Balıkesir","Bilecik","Bingöl","Bitlis","Bolu","Burdur","Bursa","Çanakkale","Çankırı","Çorum","Denizli","Diyarbakır","Edirne","Elazığ","Erzincan","Erzurum","Eskişehir","Gaziantep","Giresun","Gümüşhane","Hakkari","Hatay","Isparta","Mersin","İstanbul","İzmir","Kars","Kastamonu","Kayseri","Kırklareli","Kırşehir","Kocaeli","Konya","Kütahya","Malatya","Manisa","Kahramanmaraş","Mardin","Muğla","Muş","Nevşehir","Niğde","Ordu","Rize","Sakarya","Samsun","Siirt","Sinop","Sivas","Tekirdağ","Tokat","Trabzon","Tunceli","Şanlıurfa","Uşak","Van","Yozgat","Zonguldak","Aksaray","Bayburt","Karaman","Kırıkkale","Batman","Şırnak","Bartın","Ardahan","Iğdır","Yalova","Karabük","Kilis","Osmaniye","Düzce"];
+const DISTRICTS = CITIES; // geriye dönük uyumluluk
+const ANTALYA = ["Ev adresim", "Ofis adresim", "Diğer"];
 const TIMES = ["09:00","09:30","10:00","11:00","11:30","13:00","13:30","14:30","15:00","16:00","17:00","17:30","18:30"];
 const DAYS = [["mon","Pzt"],["tue","Sal"],["wed","Çar"],["thu","Per"],["fri","Cum"],["sat","Cmt"],["sun","Paz"]];
 const DAY_KEY = ["sun","mon","tue","wed","thu","fri","sat"]; // JS getDay() sırası
@@ -173,7 +174,7 @@ const defaultServices = () => [
 
 // ============ SEED ============
 const SEED_SHOPS = [
-  { id: "shop1", shopName: "Ahmet Tekeli Erkek Kuaförü", owner: "Ahmet Tekeli", phone: "0532 100 15 04", district: "Muratpaşa", about: "Antalya'da evde ve ofiste VIP traş hizmeti. Klasik usta işi.", pin: "1504", rating: 4.9, image: "cemo-bg.png",
+  { id: "shop1", shopName: "Ahmet Tekeli Erkek Kuaförü", owner: "Ahmet Tekeli", phone: "0532 100 15 04", city: "Antalya", district: "Muratpaşa", about: "Antalya'da evde ve ofiste VIP traş hizmeti. Klasik usta işi.", pin: "1504", rating: 4.9, image: "cemo-bg.png",
     sub: "active", subUntil: Date.now() + 24 * 86400000, trialUntil: 0,
     hours: defaultHours(),
     staff: [{ id: "st-a1", name: "Ahmet Tekeli", role: "Usta berber" }, { id: "st-a2", name: "Yusuf", role: "Berber" }],
@@ -183,7 +184,7 @@ const SEED_SHOPS = [
       { id: "a-sv3", name: "Komple Traş + Cilt Bakımı", dur: 60, price: 1800, desc: "Saç, sakal, peeling ve maske" },
       { id: "a-sv4", name: "Premium Paket", dur: 90, price: 2400, desc: "Traş, bakım, yüz masajı, styling" },
     ] },
-  { id: "shop2", shopName: "Mert Kuaför Lounge", owner: "Mert Yıldız", phone: "0533 200 00 00", district: "Konyaaltı", about: "Modern erkek bakımı, cilt ve saç uzmanı.", pin: "0000", rating: 4.7, image: "",
+  { id: "shop2", shopName: "Mert Kuaför Lounge", owner: "Mert Yıldız", phone: "0533 200 00 00", city: "Antalya", district: "Konyaaltı", about: "Modern erkek bakımı, cilt ve saç uzmanı.", pin: "0000", rating: 4.7, image: "",
     sub: "trial", subUntil: 0, trialUntil: Date.now() + 5 * 86400000,
     hours: defaultHours(),
     staff: [{ id: "st-b1", name: "Mert Yıldız", role: "Usta berber" }],
@@ -206,11 +207,22 @@ function App() {
   const [route, setRoute] = useState({ name: "landing" });
   const [locked, setLocked] = useState(false); // müşteri linkle geldi mi (berber sayfasına kilitli)
 
-  // URL'de #shop... varsa doğrudan o berberin müşteri sayfasını aç ve kilitle
+  // Açılış yönlendirmesi: önce müşteri linki (#shop), sonra kayıtlı berber oturumu
   useEffect(() => {
     const h = (window.location.hash || "").replace("#", "").trim();
-    if (h && h.startsWith("shop")) { setRoute({ name: "customerShop", shopId: h }); setLocked(true); }
+    if (h && h.startsWith("shop")) { setRoute({ name: "customerShop", shopId: h }); setLocked(true); return; }
+    try {
+      const sess = localStorage.getItem("bp_session"); // giriş yapan berberin id'si
+      const owner = localStorage.getItem("bp_owner_session"); // platform sahibi girişi
+      if (owner === "1") setRoute({ name: "owner" });
+      else if (sess) setRoute({ name: "admin", shopId: sess });
+    } catch (e) {}
   }, []);
+
+  // Berber/sahip oturumunu kaydet veya temizle
+  const startSession = (shopId) => { try { localStorage.setItem("bp_session", shopId); localStorage.removeItem("bp_owner_session"); } catch (e) {} };
+  const startOwnerSession = () => { try { localStorage.setItem("bp_owner_session", "1"); localStorage.removeItem("bp_session"); } catch (e) {} };
+  const endSession = () => { try { localStorage.removeItem("bp_session"); localStorage.removeItem("bp_owner_session"); } catch (e) {} };
 
   useEffect(() => {
     (async () => {
@@ -267,30 +279,30 @@ function App() {
       })()}
 
       {route.name === "adminLogin" && (
-        <AdminLogin shops={shops} onSuccess={(shopId) => go({ name: "admin", shopId })} onBack={() => go({ name: "landing" })} onRegister={() => go({ name: "register" })} onOwner={() => go({ name: "owner" })} />
+        <AdminLogin shops={shops} onSuccess={(shopId) => { startSession(shopId); go({ name: "admin", shopId }); }} onBack={() => go({ name: "landing" })} onRegister={() => go({ name: "register" })} onOwner={() => { startOwnerSession(); go({ name: "owner" }); }} />
       )}
 
       {route.name === "register" && (
-        <Register shops={shops} onCreate={(shop) => { saveShops([...shops, shop]); go({ name: "admin", shopId: shop.id }); }} onBack={() => go({ name: "landing" })} />
+        <Register shops={shops} onCreate={(shop) => { saveShops([...shops, shop]); startSession(shop.id); go({ name: "admin", shopId: shop.id }); }} onBack={() => go({ name: "landing" })} />
       )}
 
       {route.name === "admin" && (() => {
         const shop = shops.find((s) => s.id === route.shopId);
         if (!shop) return null;
-        if (!canOperate(shop)) return <Locked shop={shop} onExit={() => go({ name: "landing" })} />;
+        if (!canOperate(shop)) return <Locked shop={shop} onExit={() => { endSession(); go({ name: "landing" }); }} />;
         return (
           <AdminPanel shop={shop} appts={appts}
             saveAppts={saveAppts} saveShops={saveShops} shops={shops}
-            onExit={() => go({ name: "landing" })} />
+            onExit={() => { endSession(); go({ name: "landing" }); }} />
         );
       })()}
 
       {route.name === "ownerLogin" && (
-        <OwnerLogin onSuccess={() => go({ name: "owner" })} onBack={() => go({ name: "landing" })} />
+        <OwnerLogin onSuccess={() => { startOwnerSession(); go({ name: "owner" }); }} onBack={() => go({ name: "landing" })} />
       )}
 
       {route.name === "owner" && (
-        <OwnerPanel shops={shops} saveShops={saveShops} onExit={() => go({ name: "landing" })} />
+        <OwnerPanel shops={shops} saveShops={saveShops} onExit={() => { endSession(); go({ name: "landing" }); }} />
       )}
     </div>
   );
@@ -366,15 +378,15 @@ function AdminLogin({ shops, onSuccess, onBack, onRegister, onOwner }) {
 
 // ============ REGISTER (yeni berber katılır) ============
 function Register({ onCreate, onBack, shops }) {
-  const [f, setF] = useState({ shopName: "", owner: "", phone: "", district: DISTRICTS[0], about: "", pin: "" });
+  const [f, setF] = useState({ shopName: "", owner: "", phone: "", city: "", district: "", about: "", pin: "" });
   const set = (k, v) => setF({ ...f, [k]: v });
   const [err, setErr] = useState("");
   const norm = (p) => p.replace(/\D/g, "");
-  const valid = f.shopName.trim() && f.owner.trim() && norm(f.phone).length >= 10 && /^\d{4}$/.test(f.pin);
+  const valid = f.shopName.trim() && f.owner.trim() && norm(f.phone).length >= 10 && f.city && /^\d{4}$/.test(f.pin);
   const submit = () => {
     if (!valid) return;
     if (shops.some((s) => norm(s.phone) === norm(f.phone))) { setErr("Bu telefon numarası zaten kayıtlı"); return; }
-    onCreate({ id: uid("shop"), shopName: f.shopName.trim(), owner: f.owner.trim(), phone: f.phone.trim(), district: f.district,
+    onCreate({ id: uid("shop"), shopName: f.shopName.trim(), owner: f.owner.trim(), phone: f.phone.trim(), city: f.city, district: f.district.trim(),
       about: f.about.trim() || "Mobil berber hizmeti.", pin: f.pin, rating: 5.0, image: "",
       sub: "trial", subUntil: 0, trialUntil: Date.now() + 7 * 86400000,
       hours: defaultHours(), staff: defaultStaff(f.owner.trim()), services: defaultServices() });
@@ -390,10 +402,13 @@ function Register({ onCreate, onBack, shops }) {
         <input style={S.input} value={f.owner} onChange={(e) => set("owner", e.target.value)} placeholder="Ad Soyad" />
         <Label>Telefon numarası (giriş için kullanılır)</Label>
         <input style={S.input} value={f.phone} inputMode="tel" onChange={(e) => { set("phone", e.target.value); setErr(""); }} placeholder="0532 …" />
-        <Label>İlçe</Label>
-        <select style={S.input} value={f.district} onChange={(e) => set("district", e.target.value)}>
-          {DISTRICTS.map((d) => <option key={d}>{d}</option>)}
+        <Label>Şehir</Label>
+        <select style={S.input} value={f.city} onChange={(e) => set("city", e.target.value)}>
+          <option value="">Şehir seçin</option>
+          {CITIES.map((c) => <option key={c}>{c}</option>)}
         </select>
+        <Label>İlçe / Semt</Label>
+        <input style={S.input} value={f.district} onChange={(e) => set("district", e.target.value)} placeholder="Örn. merkez ilçe veya semt" />
         <Label>Kısa tanıtım</Label>
         <input style={S.input} value={f.about} onChange={(e) => set("about", e.target.value)} placeholder="Tarzınızı bir cümleyle anlatın" />
         <Label>Giriş şifresi (4 haneli PIN)</Label>
@@ -427,7 +442,7 @@ function CustomerApp({ shop, appts, addAppt, onExit, locked }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <div style={{ fontFamily: "Fraunces, serif", fontSize: 22 }}>{shop.shopName}</div>
-              <div style={{ fontSize: 12, opacity: 0.85 }}>{shop.owner} · 📍 {shop.district} · ★ {shop.rating}</div>
+              <div style={{ fontSize: 12, opacity: 0.85 }}>{shop.owner} · 📍 {[shop.district, shop.city].filter(Boolean).join(", ")} · ★ {shop.rating}</div>
             </div>
             {!locked && onExit && <div style={S.custExit} onClick={onExit}>✕</div>}
           </div>
@@ -516,7 +531,7 @@ function CustomerApp({ shop, appts, addAppt, onExit, locked }) {
 function CustomerBooking({ shop, svc, onBack, onSave }) {
   const [step, setStep] = useState(1);
   const staff = shop.staff || [];
-  const [f, setF] = useState({ staffId: staff.length === 1 ? staff[0].id : "", name: "", phone: "", service: "", date: todayISO(), time: "", place: "home", addr: ANTALYA[0], note: "" });
+  const [f, setF] = useState({ staffId: staff.length === 1 ? staff[0].id : "", name: "", phone: "", service: "", date: todayISO(), time: "", place: "home", addr: "", note: "" });
   const set = (k, v) => setF({ ...f, [k]: v });
   const slots = slotsForDate(shop.hours, f.date);
   const closed = isClosed(shop.hours, f.date);
@@ -574,10 +589,8 @@ function CustomerBooking({ shop, svc, onBack, onSave }) {
               <div key={k} style={{ ...S.timePick, flex: 1, textAlign: "center", ...(f.place === k ? S.svcPickActive : {}) }} onClick={() => set("place", k)}>{l}</div>
             ))}
           </div>
-          <Label>Bölge (Antalya)</Label>
-          <select value={f.addr} onChange={(e) => set("addr", e.target.value)} style={S.input}>
-            {ANTALYA.map((a) => <option key={a}>{a}</option>)}
-          </select>
+          <Label>Adres</Label>
+          <input value={f.addr} onChange={(e) => set("addr", e.target.value)} style={S.input} placeholder="Mahalle, sokak, bina/daire no" />
         </>}
         {step === 4 && <>
           <Label>Ad Soyad</Label>
@@ -616,7 +629,7 @@ function AdminPanel({ shop, appts, saveAppts, saveShops, shops, onExit }) {
       <aside style={S.sidebar}>
         <div style={S.brand}>{shop.shopName}</div>
         <div style={S.brandSub}>BERBER PANELİ</div>
-        <div style={S.locChip}>📍 {shop.district} · ★ {shop.rating}</div>
+        <div style={S.locChip}>📍 {[shop.district, shop.city].filter(Boolean).join(", ")} · ★ {shop.rating}</div>
         <div style={{ fontSize: 11, color: subStatus(shop).state === "active" ? "#7bbf9a" : "#d8bd86", marginBottom: 18, fontWeight: 600 }}>
           {subStatus(shop).state === "active" ? "● Abonelik aktif" : "○ Deneme sürümü"} · {subStatus(shop).daysLeft} gün
         </div>
@@ -1012,7 +1025,7 @@ function Revenue({ appts, svc }) {
 }
 
 function ShopSettings({ shop, updateShop }) {
-  const [f, setF] = useState({ shopName: shop.shopName, owner: shop.owner, phone: shop.phone || "", district: shop.district, about: shop.about, pin: shop.pin, image: shop.image });
+  const [f, setF] = useState({ shopName: shop.shopName, owner: shop.owner, phone: shop.phone || "", city: shop.city || "", district: shop.district, about: shop.about, pin: shop.pin, image: shop.image });
   const set = (k, v) => setF({ ...f, [k]: v });
   const [saved, setSaved] = useState(false);
   const commit = () => { updateShop({ ...f, pin: /^\d{4}$/.test(f.pin) ? f.pin : shop.pin }); setSaved(true); setTimeout(() => setSaved(false), 1800); };
@@ -1020,6 +1033,28 @@ function ShopSettings({ shop, updateShop }) {
   const [copied, setCopied] = useState(false);
   const copy = () => { try { navigator.clipboard.writeText(link); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1600); };
   const share = () => { const msg = `${shop.shopName} - Online randevu için: ${link}`; window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank"); };
+
+  // Logo yükle: resmi küçült + base64'e çevir
+  const onImage = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 800;
+        let { width, height } = img;
+        if (width > max) { height = height * max / width; width = max; }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        set("image", canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="content" style={{ ...S.content, paddingTop: 32, maxWidth: 560 }}>
       <div style={S.pageTitle}>Dükkan Ayarları</div>
@@ -1034,14 +1069,34 @@ function ShopSettings({ shop, updateShop }) {
         </div>
       </div>
 
-      <div style={{ marginTop: 16 }}>
+      <div style={{ ...S.panel, marginTop: 0 }}>
+        <Label>Logo / Tanıtım Görseli</Label>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 6 }}>
+          <div style={{ width: 72, height: 72, borderRadius: 12, overflow: "hidden", flexShrink: 0, background: "#211c16", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {f.image ? <img src={f.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ color: "#b89651", fontFamily: "Fraunces, serif", fontSize: 28 }}>{(f.shopName || "?")[0]}</span>}
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ ...S.actBtnGhost, display: "inline-block", cursor: "pointer" }}>
+              Görsel Seç
+              <input type="file" accept="image/*" onChange={onImage} style={{ display: "none" }} />
+            </label>
+            {f.image && <button style={{ ...S.actBtnGhost, marginLeft: 8, color: "#a8443a" }} onClick={() => set("image", "")}>Kaldır</button>}
+            <div style={{ fontSize: 11, color: "#6b6862", marginTop: 6 }}>Müşteriler bu görselle karşılanır. Telefondan foto seçebilirsin.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 0 }}>
         <Label>Dükkan adı</Label><input style={S.input} value={f.shopName} onChange={(e) => set("shopName", e.target.value)} />
         <Label>Sahip adı</Label><input style={S.input} value={f.owner} onChange={(e) => set("owner", e.target.value)} />
         <Label>Telefon (giriş numarası)</Label><input style={S.input} value={f.phone} inputMode="tel" onChange={(e) => set("phone", e.target.value)} />
-        <Label>İlçe</Label>
-        <select style={S.input} value={f.district} onChange={(e) => set("district", e.target.value)}>{DISTRICTS.map((d) => <option key={d}>{d}</option>)}</select>
+        <Label>Şehir</Label>
+        <select style={S.input} value={f.city} onChange={(e) => set("city", e.target.value)}>
+          <option value="">Şehir seçin</option>
+          {CITIES.map((c) => <option key={c}>{c}</option>)}
+        </select>
+        <Label>İlçe / Semt</Label><input style={S.input} value={f.district} onChange={(e) => set("district", e.target.value)} placeholder="Örn. merkez ilçe veya semt" />
         <Label>Tanıtım</Label><input style={S.input} value={f.about} onChange={(e) => set("about", e.target.value)} />
-        <Label>Görsel adı (opsiyonel, ör. cemo-bg.png)</Label><input style={S.input} value={f.image} onChange={(e) => set("image", e.target.value)} placeholder="dosya adı" />
         <Label>Giriş şifresi (4 hane)</Label><input style={S.input} value={f.pin} maxLength={4} onChange={(e) => set("pin", e.target.value.replace(/\D/g,"").slice(0,4))} />
         <button style={{ ...S.actBtn, width: "100%", marginTop: 16 }} onClick={commit}>{saved ? "✓ Kaydedildi" : "Kaydet"}</button>
       </div>
@@ -1052,7 +1107,7 @@ function ShopSettings({ shop, updateShop }) {
 function BookingModal({ shop, svc, onClose, onSave }) {
   const [step, setStep] = useState(1);
   const staff = shop.staff || [];
-  const [f, setF] = useState({ staffId: staff[0]?.id || "", name: "", phone: "", service: "", date: todayISO(), time: "10:00", place: "home", addr: ANTALYA[0], vip: false, note: "" });
+  const [f, setF] = useState({ staffId: staff[0]?.id || "", name: "", phone: "", service: "", date: todayISO(), time: "10:00", place: "home", addr: "", vip: false, note: "" });
   const set = (k, v) => setF({ ...f, [k]: v });
   const canNext = step === 1 ? f.service : step === 2 ? f.date && f.time : f.name && f.phone;
   const staffName = (id) => (staff.find((s) => s.id === id) || {}).name || "";
@@ -1073,7 +1128,7 @@ function BookingModal({ shop, svc, onClose, onSave }) {
             <Label>Tarih</Label><input type="date" value={f.date} min={todayISO()} onChange={(e) => set("date", e.target.value)} style={S.input} />
             <Label>Saat</Label><div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{TIMES.map((t) => <div key={t} style={{ ...S.timePick, ...(f.time === t ? S.svcPickActive : {}) }} onClick={() => set("time", t)}>{t}</div>)}</div>
             <Label>Konum</Label><div style={{ display: "flex", gap: 8 }}>{[["home","🏠 Ev"],["office","🏢 Ofis"]].map(([k,l]) => <div key={k} style={{ ...S.timePick, flex: 1, textAlign: "center", ...(f.place === k ? S.svcPickActive : {}) }} onClick={() => set("place", k)}>{l}</div>)}</div>
-            <Label>Bölge</Label><select value={f.addr} onChange={(e) => set("addr", e.target.value)} style={S.input}>{ANTALYA.map((a) => <option key={a}>{a}</option>)}</select>
+            <Label>Adres</Label><input value={f.addr} onChange={(e) => set("addr", e.target.value)} style={S.input} placeholder="Mahalle, sokak, no" />
           </>}
           {step === 3 && <>
             <Label>Çalışan</Label><select value={f.staffId} onChange={(e) => set("staffId", e.target.value)} style={S.input}>{staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
@@ -1252,7 +1307,7 @@ function OwnerPanel({ shops, saveShops, onExit }) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16 }}>{s.shopName} {badge(st)}</div>
-                  <div style={{ fontSize: 13, color: "#6b6862", marginTop: 3 }}>{s.owner} · 📞 {s.phone} · 📍 {s.district}</div>
+                  <div style={{ fontSize: 13, color: "#6b6862", marginTop: 3 }}>{s.owner} · 📞 {s.phone} · 📍 {[s.district, s.city].filter(Boolean).join(", ")}</div>
                   {s.sub === "active" && s.subUntil ? (
                     <div style={{ fontSize: 12, color: "#6b6862", marginTop: 3 }}>Bitiş: {fmtDate(new Date(s.subUntil).toISOString().slice(0,10))}</div>
                   ) : st.state === "trial" ? (
