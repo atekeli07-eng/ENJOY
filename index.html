@@ -204,11 +204,12 @@ function App() {
   const [shops, setShops] = useState(null);
   const [appts, setAppts] = useState(null);
   const [route, setRoute] = useState({ name: "landing" });
+  const [locked, setLocked] = useState(false); // müşteri linkle geldi mi (berber sayfasına kilitli)
 
-  // URL'de #shop... varsa doğrudan o berberin müşteri sayfasını aç
+  // URL'de #shop... varsa doğrudan o berberin müşteri sayfasını aç ve kilitle
   useEffect(() => {
     const h = (window.location.hash || "").replace("#", "").trim();
-    if (h && h.startsWith("shop")) setRoute({ name: "customerShop", shopId: h });
+    if (h && h.startsWith("shop")) { setRoute({ name: "customerShop", shopId: h }); setLocked(true); }
   }, []);
 
   useEffect(() => {
@@ -257,11 +258,11 @@ function App() {
 
       {route.name === "customerShop" && (() => {
         const shop = shops.find((s) => s.id === route.shopId);
-        if (!shop) return <NotFound onExit={() => go({ name: "landing" })} text="Berber bulunamadı. Linki kontrol edin." />;
-        if (!canOperate(shop)) return <NotFound onExit={() => go({ name: "landing" })} text={`${shop.shopName} şu an randevu almıyor.`} />;
+        if (!shop) return <NotFound onExit={locked ? null : () => go({ name: "landing" })} text="Berber bulunamadı. Linki kontrol edin." />;
+        if (!canOperate(shop)) return <NotFound onExit={locked ? null : () => go({ name: "landing" })} text={`${shop.shopName} şu an randevu almıyor.`} />;
         return (
-          <CustomerApp shop={shop} appts={appts}
-            addAppt={(a) => saveAppts([...appts, a])} onExit={() => go({ name: "landing" })} />
+          <CustomerApp shop={shop} appts={appts} locked={locked}
+            addAppt={(a) => saveAppts([...appts, a])} onExit={locked ? null : () => go({ name: "landing" })} />
         );
       })()}
 
@@ -408,7 +409,7 @@ function Register({ onCreate, onBack, shops }) {
 }
 
 // ============ CUSTOMER APP (tek berberin müşteri sayfası) ============
-function CustomerApp({ shop, appts, addAppt, onExit }) {
+function CustomerApp({ shop, appts, addAppt, onExit, locked }) {
   const [screen, setScreen] = useState("home"); // home | book | done | mine
   const [last, setLast] = useState(null);
   const [myPhone, setMyPhone] = useState("");
@@ -428,7 +429,7 @@ function CustomerApp({ shop, appts, addAppt, onExit }) {
               <div style={{ fontFamily: "Fraunces, serif", fontSize: 22 }}>{shop.shopName}</div>
               <div style={{ fontSize: 12, opacity: 0.85 }}>{shop.owner} · 📍 {shop.district} · ★ {shop.rating}</div>
             </div>
-            <div style={S.custExit} onClick={onExit}>✕</div>
+            {!locked && onExit && <div style={S.custExit} onClick={onExit}>✕</div>}
           </div>
         </div>
       </div>
@@ -664,9 +665,9 @@ function AdminPanel({ shop, appts, saveAppts, saveShops, shops, onExit }) {
       )}
 
       <nav className="mobnav" style={S.mobnav}>
-        {[["dashboard","Bugün","📋"],["calendar","Takvim","🗓"],["new","Ekle","＋"],["services","Hizmet","✂"],["more","Menü","☰"]].map(([k,l,ic]) => (
-          <div key={k} style={{ ...S.mobItem, ...(tab === k && k !== "new" && k !== "more" ? { color: "#b89651" } : {}) }}
-            onClick={() => k === "new" ? setBooking(true) : k === "more" ? setMoreOpen(true) : setTab(k)}>
+        {[["new","Randevu Oluştur","＋"],["more","Menü","☰"]].map(([k,l,ic]) => (
+          <div key={k} style={{ ...S.mobItem, flex: 1 }}
+            onClick={() => k === "new" ? setBooking(true) : setMoreOpen(true)}>
             <div style={{ ...S.mobIcon, ...(k === "new" ? S.mobAdd : {}) }}>{ic}</div><span>{l}</span>
           </div>
         ))}
@@ -1101,7 +1102,7 @@ function NotFound({ text, onExit }) {
         <div style={{ fontSize: 46 }}>✂️</div>
         <div style={{ ...S.authTitle, marginTop: 8 }}>Randevu alınamıyor</div>
         <div style={{ fontSize: 14, color: "#6b6862", marginTop: 10 }}>{text}</div>
-        <button style={{ ...S.actBtn, width: "100%", marginTop: 18 }} onClick={onExit}>Tamam</button>
+        {onExit && <button style={{ ...S.actBtn, width: "100%", marginTop: 18 }} onClick={onExit}>Tamam</button>}
       </div>
     </div>
   );
