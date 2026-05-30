@@ -601,6 +601,7 @@ function CustomerBooking({ shop, svc, onBack, onSave }) {
 function AdminPanel({ shop, appts, saveAppts, saveShops, shops, onExit }) {
   const [tab, setTab] = useState("dashboard");
   const [booking, setBooking] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const myAppts = appts.filter((a) => a.shopId === shop.id);
   const svc = (id) => shop.services.find((s) => s.id === id) || shop.services[0];
 
@@ -646,10 +647,26 @@ function AdminPanel({ shop, appts, saveAppts, saveShops, shops, onExit }) {
 
       {booking && <BookingModal shop={shop} svc={svc} onClose={() => setBooking(false)} onSave={(a) => { addAppt(a); setBooking(false); setTab("dashboard"); }} />}
 
+      {moreOpen && (
+        <div style={S.sheetBg} onClick={() => setMoreOpen(false)}>
+          <div style={S.sheet} onClick={(e) => e.stopPropagation()}>
+            <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 4, margin: "0 auto 16px" }} />
+            <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, marginBottom: 12 }}>Menü</div>
+            {[["dashboard","Bugün","📋"],["calendar","Takvim","🗓"],["customers","Müşteriler","👤"],["staff","Çalışanlar","👥"],["services","Hizmetler","✂"],["hours","Çalışma Saatleri","🕐"],["revenue","Gelir","₺"],["settings","Dükkan & Randevu Linki","🏪"]].map(([k,l,ic]) => (
+              <div key={k} style={{ ...S.sheetItem, ...(tab === k ? { background: "#faf8f3", color: "#b89651", fontWeight: 700 } : {}) }}
+                onClick={() => { setTab(k); setMoreOpen(false); }}>
+                <span style={{ fontSize: 18 }}>{ic}</span> {l}
+              </div>
+            ))}
+            <div style={{ ...S.sheetItem, color: "#a8443a", marginTop: 6 }} onClick={onExit}>↩ Çıkış / ana sayfa</div>
+          </div>
+        </div>
+      )}
+
       <nav className="mobnav" style={S.mobnav}>
-        {[["dashboard","Bugün","📋"],["calendar","Takvim","🗓"],["new","Ekle","＋"],["staff","Ekip","👥"],["services","Hizmet","✂"]].map(([k,l,ic]) => (
-          <div key={k} style={{ ...S.mobItem, ...(tab === k && k !== "new" ? { color: "#b89651" } : {}) }}
-            onClick={() => k === "new" ? setBooking(true) : setTab(k)}>
+        {[["dashboard","Bugün","📋"],["calendar","Takvim","🗓"],["new","Ekle","＋"],["services","Hizmet","✂"],["more","Menü","☰"]].map(([k,l,ic]) => (
+          <div key={k} style={{ ...S.mobItem, ...(tab === k && k !== "new" && k !== "more" ? { color: "#b89651" } : {}) }}
+            onClick={() => k === "new" ? setBooking(true) : k === "more" ? setMoreOpen(true) : setTab(k)}>
             <div style={{ ...S.mobIcon, ...(k === "new" ? S.mobAdd : {}) }}>{ic}</div><span>{l}</span>
           </div>
         ))}
@@ -1396,6 +1413,9 @@ const S = {
   mobItem: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 600, color: "#b5b2aa", cursor: "pointer", padding: "4px 8px", flex: 1 },
   mobIcon: { fontSize: 18, lineHeight: 1 },
   mobAdd: { background: "#b89651", color: "#211c16", width: 38, height: 38, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", marginTop: -18, fontSize: 22, fontWeight: 700, boxShadow: "0 4px 12px rgba(184,150,81,0.4)" },
+  sheetBg: { position: "fixed", inset: 0, background: "rgba(20,16,12,0.5)", zIndex: 200, display: "flex", alignItems: "flex-end" },
+  sheet: { background: "#fff", width: "100%", borderRadius: "20px 20px 0 0", padding: "14px 16px 28px", maxHeight: "80vh", overflowY: "auto" },
+  sheetItem: { display: "flex", alignItems: "center", gap: 14, padding: "14px 12px", borderRadius: 10, fontSize: 15, cursor: "pointer", color: "#211c16" },
 };
 
 const CSS = `
